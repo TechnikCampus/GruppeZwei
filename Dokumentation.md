@@ -61,4 +61,4 @@ Inhalte der Besprechung:
 
 - Projektziel erfassen
 
-
+(Schriftführer bis jetzt Avinash)
