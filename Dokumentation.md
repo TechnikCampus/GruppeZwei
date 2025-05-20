@@ -36,7 +36,7 @@ Unterstützende Entwickler:
 
 Linus
 
-Erhun
+Erhun ()
 
 Musikplayer
 Parallel zur Spielmechanik wird ein Musikplayer integriert, der Hintergrundmusik und Soundeffekte abspielt. Die Kommunikation zwischen Server und Player erfolgt je nach Architektur getrennt oder eingebettet.
