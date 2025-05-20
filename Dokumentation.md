@@ -61,4 +61,15 @@ Inhalte der Besprechung:
 
 - Projektziel erfassen
 
+###Teil-Dateien###
+
+├── client.py              # Pygame-Client: Darstellung, Eingaben
+├── server.py              # Servercode: Netzwerk, Spielablauf
+├── game_state.py          # Spielregeln, Kartenlogik, Spielzustand
+├── network_utils.py       # (optional) Socket-Kommunikation abstrahiert
+├── settings.py            # z. B. Kartengrößen, Farben, max. Spieler
+├── assets/                # Kartenbilder, Sounds usw.
+└── README.md              # Infos zum Projekt
+
+
 
