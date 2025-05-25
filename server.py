@@ -1,11 +1,11 @@
 import socket
 import threading
-import pickle
+import json
 import random
 import time
 
 # Globale Konfiguration
-MAX_SPIELER = 8
+MAX_SPIELER = 4
 PORT = 65433
 KARTEN_PRO_SPIELER = 12
 
@@ -23,12 +23,13 @@ def karten_ziehen(anzahl):
     return [KARTEN_DECK.pop() for _ in range(anzahl) if KARTEN_DECK]
 
 def broadcast(data, exclude=None):
+    message = json.dumps(data).encode("utf-8") + b"\n"
     for spieler_id, info in spielerdaten.items():
         if exclude is not None and spieler_id == exclude:
             continue
         try:
-            info["conn"].sendall(pickle.dumps(data))
-        except (ConnectionResetError, EOFError, pickle.PickleError) as e:
+            info["conn"].sendall(message)
+        except (ConnectionResetError, BrokenPipeError) as e:
             print(f"Fehler beim Senden: {e}")
 
 def warte_auf_bereitschaft():
@@ -47,7 +48,7 @@ def warte_auf_bereitschaft():
 def client_thread(conn, spieler_id):
     global spielgestartet
     print(f"Thread für Spieler {spieler_id} gestartet.")
-    
+
     # Karten zuteilen
     karten = karten_ziehen(KARTEN_PRO_SPIELER)
     with spiel_lock:
@@ -55,36 +56,67 @@ def client_thread(conn, spieler_id):
 
     # Anfangsdaten senden
     startdaten = {
-        "typ": "start",
-        "spieler_id": spieler_id,
-        "karten": karten
+        "type": "start",
+        "player_id": spieler_id,
+        "hand": karten
     }
-    conn.sendall(pickle.dumps(startdaten))
+    conn.sendall(json.dumps(startdaten).encode("utf-8") + b"\n")
 
+    buffer = b""
     try:
         while True:
-            daten = pickle.loads(conn.recv(2048))
-            if daten["typ"] == "bereit":
-                with spiel_lock:
-                    spielerdaten[spieler_id]["bereit"] = True
-                print(f"Spieler {spieler_id} ist bereit.")
-            elif daten["typ"] == "aktion":
-                print(f"Aktionsdaten von Spieler {spieler_id}: {daten}")
-                broadcast(
-                    {
-                        "typ": "aktion",
-                        "spieler": spieler_id,
-                        "inhalt": daten
-                    },
-                    exclude=spieler_id
-                )
-            elif daten["typ"] == "nachricht":
-                broadcast({
-                    "typ": "nachricht",
-                    "von": spieler_id,
-                    "text": daten["text"]
-                })
-    except (ConnectionResetError, EOFError, pickle.UnpicklingError) as e:
+            chunk = conn.recv(4096)
+            if not chunk:
+                break
+            buffer += chunk
+            while b"\n" in buffer:
+                raw_msg, buffer = buffer.split(b"\n", 1)
+                try:
+                    daten = json.loads(raw_msg.decode("utf-8"))
+                    if daten["type"] == "ready":
+                        with spiel_lock:
+                            spielerdaten[spieler_id]["bereit"] = True
+                        print(f"Spieler {spieler_id} ist bereit.")
+                    elif daten["type"] == "draw_card":
+                        karte = karten_ziehen(1)[0] if KARTEN_DECK else None
+                        with spiel_lock:
+                            spielerdaten[spieler_id]["karten"].append(karte)
+                        conn.sendall(json.dumps({
+                            "type": "card_drawn",
+                            "card": karte
+                        }).encode("utf-8") + b"\n")
+                    elif daten["type"] == "chat":
+                        broadcast({
+                            "type": "chat",
+                            "sender": daten.get("sender", "?"),
+                            "text": daten.get("text", "")
+                        })
+                    elif daten["type"] == "reveal_card":
+                        broadcast({
+                            "type": "reveal_result",
+                            "data": daten.get("data", {}),
+                            "player": spieler_id
+                        })
+                    elif daten["type"] == "discard_card":
+                        broadcast({
+                            "type": "discarded",
+                            "data": daten.get("data", {}),
+                            "player": spieler_id
+                        })
+                    elif daten["type"] == "swap_card":
+                        broadcast({
+                            "type": "swapped",
+                            "data": daten.get("data", {}),
+                            "player": spieler_id
+                        })
+                    elif daten["type"] == "pass_card":
+                        broadcast({
+                            "type": "passed",
+                            "player": spieler_id
+                        })
+                except json.JSONDecodeError:
+                    print("Fehler beim Dekodieren der Nachricht")
+    except (ConnectionResetError, BrokenPipeError) as e:
         print(f"Spieler {spieler_id} getrennt: {e}")
     finally:
         conn.close()
@@ -98,7 +130,7 @@ def server_starten():
     server.bind(("0.0.0.0", PORT))
     server.listen(MAX_SPIELER)
     print(f"Skyjo-Server gestartet auf Port {PORT}.")
-    
+
     spieler_id = 0
     while spieler_id < MAX_SPIELER:
         conn, addr = server.accept()
@@ -120,7 +152,7 @@ def server_starten():
     warte_auf_bereitschaft()
     spielgestartet = True
     broadcast({
-        "typ": "startinfo",
+        "type": "game_state",
         "info": "Spiel beginnt jetzt!"
     })
 
