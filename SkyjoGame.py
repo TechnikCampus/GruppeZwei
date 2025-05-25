@@ -3,36 +3,37 @@ from class_player import Player
 
 
 class SkyjoGame:
-    def __init__(self):
+    def __init__(self):             # initialisierung der SkyjoGame-Klasse
         self.players = []
-        self.max_players = 4
-        self.deck = []
-        self.discard_pile = []
-        self.current_turn = 0
-        self.started = False
+        self.max_players = 8    # Maximale Anzahl der Spieler
+        self.min_players = 2    # Minimale Anzahl der Spieler
+        self.deck = []          # Kartenstapel
+        self.discard_pile = []  # Ablagestapel
+        self.current_turn = 0   # Index des aktuellen Spielers
+        self.started = False    # Spiel gestartet oder nicht
 
-    def add_player(self, player: Player):
+    def add_player(self, player: Player):   # Spieler hinzufügen
         if len(self.players) < self.max_players:
             self.players.append(player)
             return True
         return False
 
-    def get_player(self, player_id: str):
+    def get_player(self, player_id: str):   # Spieler anhand der ID finden
         for p in self.players:
             if p.id == player_id:
                 return p
         return None
 
-    def all_ready(self):
+    def all_ready(self):        # Überprüfen, ob alle Spieler bereit sind
         return all(p.is_ready for p in self.players)
 
-    def next_turn(self):
+    def next_turn(self):        # Nächster Spieler am Zug
         self.current_turn = (self.current_turn + 1) % len(self.players)
 
-    def get_current_player(self):
+    def get_current_player(self):   	    # Aktuellen Spieler zurückgeben
         return self.players[self.current_turn] if self.players else None
 
-    def reset_game(self):
+    def reset_game(self):               # Spiel zurücksetzen
         for p in self.players:
             p.reset()
         self.deck = []
@@ -40,8 +41,8 @@ class SkyjoGame:
         self.current_turn = 0
         self.started = False
 
-    def initialize_deck(self):
-        self.deck = [-2] * 5 + list(range(0, 13)) * 10
+    def initialize_deck(self):      # Kartenstapel initialisieren
+        self.deck = [-2] * 5 + list(range(-1, 13)) * 10
         random.shuffle(self.deck)
 
     def deal_initial_cards(self):
