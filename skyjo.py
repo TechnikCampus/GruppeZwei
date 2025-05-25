@@ -7,7 +7,8 @@
 ##############################################################################
 # Beschreibung:
 ##############################################################################
-import player as Player
+from class_player import Player
+from SkyjoGame import SkyjoGame
 import random
 # import pygame
 
