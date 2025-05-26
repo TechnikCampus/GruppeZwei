@@ -42,7 +42,7 @@ class SkyjoGame:
         self.started = False
 
     def initialize_deck(self):      # Kartenstapel initialisieren
-        self.deck = [-2] * 5 + list(range(-1, 13)) * 10
+        self.deck = [-2] * 5 + [0] * 5 + list(range(-1, 13)) * 10
         random.shuffle(self.deck)
 
     def deal_initial_cards(self):
