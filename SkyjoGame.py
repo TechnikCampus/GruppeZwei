@@ -61,13 +61,6 @@ class SkyjoGame:
                 self.discard_pile.append(self.deck.pop())
         return None
 
-    def player_discard_card(self, player: Player, card: str):
-        if card in player.hand:
-            player.hand.remove(card)
-            self.discard_pile.append(card)
-            return True
-        return False
-
     def player_ready(self, player: Player):
         player.is_ready = True
         if self.all_ready():
@@ -87,3 +80,28 @@ class SkyjoGame:
 
     def wait_for_communication(self):
         pass
+
+    def sort_players(self):
+        n = len(self.players)
+        for i in range(n):
+            for j in range(0, n - i - 1):
+                if self.players[j].score < self.players[j + 1].score:
+                    # Tausche die Objekte, wenn der linke Score kleiner ist
+                    self.players[j], self.players[j + 1] = self.players[j + 1], self.players[j]
+
+    def threeSome(self, player: Player):
+        for i in range(4):
+
+            if (
+                player.grid[0][i] == player.grid[1][i] and player.grid[0][i] == player.grid[2][i] and player.grid[0][i] is not None
+            ):
+                self.discard_pile.append(player.grid[0][i])
+                player.set_card(0, i, None)
+                self.discard_pile.append(player.grid[1][i])
+                player.set_card(1, i, None)
+                self.discard_pile.append(player.grid[2][i])
+                player.set_card(2, i, None)
+
+    def check_for_end(self, player: Player):
+        if player.all_cards_revealed:
+            return True
