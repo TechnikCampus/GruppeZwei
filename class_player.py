@@ -28,7 +28,6 @@ class Player:
         return all(all(row) for row in self.revealed)
 
     def calculate_score(self):
-        score = 0
         for i in range(3):
             for j in range(4):
                 if self.revealed[i][j] and self.grid[i][j] is not None:
