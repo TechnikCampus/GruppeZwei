@@ -12,6 +12,9 @@ class Player:
     def set_card(self, row: int, col: int, card: str):
         self.grid[row][col] = card
 
+    def get_card(self, row: int, col: int):
+        return self.grid[row][col]
+
     def reveal_card(self, row: int, col: int):
         if self.revealed[row][col]:
             return None

@@ -7,8 +7,8 @@ class SkyjoGame:
         self.players = []
         self.max_players = 8    # Maximale Anzahl der Spieler
         self.min_players = 2    # Minimale Anzahl der Spieler
-        self.deck = []          # Kartenstapel
-        self.discard_pile = []  # Ablagestapel
+        self.deck = []          # Kartenstapel (umgedreht)
+        self.discard_pile = []  # Ablagestapel (aufgedeckt)
         self.current_turn = 0   # Index des aktuellen Spielers
         self.started = False    # Spiel gestartet oder nicht
 
@@ -52,12 +52,13 @@ class SkyjoGame:
     def draw_cards(self, amount):
         return [self.deck.pop() for _ in range(amount) if self.deck]
 
-    def player_draw_card(self, player: Player):
+    def player_draw_new_card(self, player: Player):
         if self.started and player == self.get_current_player():
             if self.deck:
-                card = self.deck.pop()
-                player.hand.append(card)
-                return card
+                # card = self.deck.pop()
+                # player.hand.append(card)
+                # return card
+                self.discard_pile.append(self.deck.pop())
         return None
 
     def player_discard_card(self, player: Player, card: str):
@@ -73,6 +74,7 @@ class SkyjoGame:
             self.started = True
             self.initialize_deck()
             self.deal_initial_cards()
+            self.discard_pile.append(self.deck.pop())
 
     def to_dict(self):
         return {
