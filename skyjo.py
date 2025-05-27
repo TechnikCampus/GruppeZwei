@@ -26,8 +26,8 @@ for spieler in SkyjoSpiel.players:
 for spieler in SkyjoSpiel.players:
     pass  # spielerdeck jedem client mit teilen
 
-while SkyjoSpiel.all_ready():
-
+if SkyjoSpiel.all_ready():
+    SkyjoSpiel.wait_for_communication()     # muss noch programmiert werdden/ wartet bis alle daten da sind
     reihe = 0       # informationen vom client
     spalte = 0      # informationen vom client
     abfrage1 = 1    # informationen vom client
@@ -36,8 +36,18 @@ while SkyjoSpiel.all_ready():
     while (firstTurn <= 2 * anzahlSpieler):
         aktuellerSpieler = SkyjoSpiel.get_current_player()
         aktuellerSpieler.reveal_card(reihe, spalte)
+        aktuellerSpieler.calculate_score()
         SkyjoSpiel.next_turn()
         firstTurn += 1
+
+
+while SkyjoSpiel.all_ready():
+
+    SkyjoSpiel.wait_for_communication()     # muss noch programmiert werdden/ wartet bis alle daten da sind
+    reihe = 0       # informationen vom client
+    spalte = 0      # informationen vom client
+    abfrage1 = 1    # informationen vom client
+    abfrage2 = 2    # informationen vom client
 
     aktuellerSpieler = SkyjoSpiel.get_current_player()
 
@@ -55,7 +65,5 @@ while SkyjoSpiel.all_ready():
                     SkyjoSpiel.discard_pile.append(karte)
                 case(s.EIGENEKARTEAUFDECKEN):
                     aktuellerSpieler.reveal_card(reihe, spalte)
-    
+
     SkyjoSpiel.next_turn()
-
-

@@ -84,3 +84,6 @@ class SkyjoGame:
             "current_turn": self.players[self.current_turn].id if self.players else None,
             "started": self.started
         }
+
+    def wait_for_communication(self):
+        pass
