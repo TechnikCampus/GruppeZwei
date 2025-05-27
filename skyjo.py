@@ -7,38 +7,55 @@
 ##############################################################################
 # Beschreibung:
 ##############################################################################
-import player as Player
-import random
-# import pygame
+from class_player import Player
+from SkyjoGame import SkyjoGame
+import settings as s
 
-anzahlSpieler = 4   # Anzahl der Spieler / muss über den Host festgelegt werden
+anzahlSpieler = 4  # Anzahl der Spieler, soll vom Host empfangen werden
+firstTurn = 1
 
-skyjo_karten = (
-    *([-2] * 5),
-    *([-1] * 10),
-    *([0] * 15),
-    *([1] * 10),
-    *([2] * 10),
-    *([3] * 10),
-    *([4] * 10),
-    *([5] * 10),
-    *([6] * 10),
-    *([7] * 10),
-    *([8] * 10),
-    *([9] * 10),
-    *([10] * 10),
-    *([11] * 10),
-    *([12] * 10)
-)
+SkyjoSpiel = SkyjoGame()
 
-umgedrehteKarten = []
-aufgedeckteKarten = []
+for i in range(anzahlSpieler):
+    Spieler = Player()
+    SkyjoSpiel.add_player(Spieler)
 
-spielerTupel = []
-for j in range(1, anzahlSpieler):
-    index = random.randint(0, len(skyjo_karten) - 1)
-    for i in range(1, 12):
-        umgedrehteKarten[i] = skyjo_karten[index]
-        skyjo_karten.pop(index)   # Karten ziehen
-    Spieler = Player(j, umgedrehteKarten)
-    spielerTupel.append(Spieler)    # Spieler-Objekte erstellen und in einer Liste speichern mit seinen Karten
+for spieler in SkyjoSpiel.players:
+    SkyjoSpiel.player_ready(spieler)
+
+for spieler in SkyjoSpiel.players:
+    pass  # spielerdeck jedem client mit teilen
+
+while SkyjoSpiel.all_ready():
+
+    reihe = 0       # informationen vom client
+    spalte = 0      # informationen vom client
+    abfrage1 = 1    # informationen vom client
+    abfrage2 = 2    # informationen vom client
+
+    while (firstTurn <= 2 * anzahlSpieler):
+        aktuellerSpieler = SkyjoSpiel.get_current_player()
+        aktuellerSpieler.reveal_card(reihe, spalte)
+        SkyjoSpiel.next_turn()
+        firstTurn += 1
+
+    aktuellerSpieler = SkyjoSpiel.get_current_player()
+
+    match (abfrage1):
+        case (s.KARTEVOMSTAPELNEHMEN):
+            karte = aktuellerSpieler.get_card(reihe, spalte)         # r und c müssen vom client übergeben werden
+            aktuellerSpieler.set_card(reihe, spalte, SkyjoSpiel.discard_pile.pop())
+            SkyjoSpiel.discard_pile.append(karte)
+        case (s.KARTEVOMSTAPELAUFDECKEN):
+            SkyjoSpiel.player_draw_new_card(aktuellerSpieler)
+            match (abfrage2):
+                case(s.KARTEVOMSTAPELNEHMEN):
+                    karte = aktuellerSpieler.get_card(reihe, spalte)         # r und c müssen vom client übergeben werden
+                    aktuellerSpieler.set_card(reihe, spalte, SkyjoSpiel.discard_pile.pop())
+                    SkyjoSpiel.discard_pile.append(karte)
+                case(s.EIGENEKARTEAUFDECKEN):
+                    aktuellerSpieler.reveal_card(reihe, spalte)
+    
+    SkyjoSpiel.next_turn()
+
+
