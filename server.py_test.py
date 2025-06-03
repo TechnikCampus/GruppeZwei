@@ -93,6 +93,5 @@ def server_starten():
             spielerdaten[sid] = {"conn": conn, "karten": []}
         threading.Thread(target=client_thread, args=(conn, sid), daemon=True).start()
         sid += 1
-
 if __name__ == "__main__":
     server_starten()

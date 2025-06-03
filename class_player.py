@@ -5,6 +5,7 @@ class Player:
         self.grid = [[None for _ in range(4)] for _ in range(3)]
         self.revealed = [[False for _ in range(4)] for _ in range(3)]
         self.score = 0
+        self.score_overall = 0
         self.avatar = avatar
         self.is_ready = False
         self.is_connected = True
@@ -28,19 +29,20 @@ class Player:
         return all(all(row) for row in self.revealed)
 
     def calculate_score(self):
+        self.score = 0
         for i in range(3):
             for j in range(4):
                 if self.revealed[i][j] and self.grid[i][j] is not None:
                     try:
-                        score += int(self.grid[i][j])
+                        self.score += int(self.grid[i][j])
                     except ValueError:
                         continue
-        self.score = score
-        return score
+        return self.score
 
     def reset(self):
         self.grid = [[None for _ in range(4)] for _ in range(3)]
         self.revealed = [[False for _ in range(4)] for _ in range(3)]
+        self.score_overall += self.score
         self.score = 0
         self.hand.clear()
         self.is_ready = False
