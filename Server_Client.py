@@ -2,105 +2,13 @@ import socket
 import threading
 import json
 import random
-import tkinter as tk
-from tkinter import simpledialog
-import sys
 
-# ==== Gemeinsame Parameter ====
+from SkyjoGame import SkyjoGame
+from class_player import Player
+
+# ==== Konfiguration & Spielstatus ====
 PORT = 65435
-MAX_SPIELER = 4
-KARTEN_PRO_SPIELER = 12
-KARTEN_DECK = [-2] * 5 + list(range(0, 13)) * 10
-random.shuffle(KARTEN_DECK)
 
-spielerdaten = {}
-spiel_lock = threading.Lock()
-
-# ==== Server-Funktionen ====
-def karten_ziehen(anzahl):
-    return [KARTEN_DECK.pop() for _ in range(anzahl) if KARTEN_DECK]
-
-def broadcast(message, exclude=None):
-    raw = json.dumps(message).encode("utf-8") + b"\n"
-    with spiel_lock:
-        for sid, daten in spielerdaten.items():
-            if exclude is not None and sid == exclude:
-                continue
-            try:
-                daten["conn"].sendall(raw)
-            except:
-                continue
-
-def client_thread(conn, sid):
-    print(f"Spieler {sid} verbunden.")
-    karten = karten_ziehen(KARTEN_PRO_SPIELER)
-    with spiel_lock:
-        spielerdaten[sid]["karten"] = karten
-
-    conn.sendall(json.dumps({
-        "type": "start",
-        "player_id": sid,
-        "hand": karten
-    }).encode("utf-8") + b"\n")
-
-    buffer = b""
-    try:
-        while True:
-            chunk = conn.recv(4096)
-            if not chunk:
-                break
-            buffer += chunk
-            while b"\n" in buffer:
-                raw, buffer = buffer.split(b"\n", 1)
-                try:
-                    daten = json.loads(raw.decode("utf-8"))
-                    typ = daten.get("type")
-                    if typ == "join":
-                        print(f"{daten['data'].get('name', 'Unbekannt')} ist dem Spiel beigetreten.")
-                    elif typ == "chat":
-                        broadcast({
-                            "type": "chat",
-                            "sender": daten["data"].get("sender", "?"),
-                            "text": daten["data"].get("text", "")
-                        })
-                    elif typ == "draw_card":
-                        neue_karte = karten_ziehen(1)[0] if KARTEN_DECK else None
-                        spielerdaten[sid]["karten"].append(neue_karte)
-                        conn.sendall(json.dumps({
-                            "type": "card_drawn",
-                            "card": neue_karte
-                        }).encode("utf-8") + b"\n")
-                    elif typ == "reveal_card":
-                        broadcast({
-                            "type": "reveal_result",
-                            "data": daten["data"],
-                            "player": sid
-                        })
-                except json.JSONDecodeError:
-                    print("Ungültige Nachricht")
-    except:
-        print(f"Spieler {sid} getrennt.")
-    finally:
-        with spiel_lock:
-            if sid in spielerdaten:
-                del spielerdaten[sid]
-        conn.close()
-
-def server_starten():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(("0.0.0.0", PORT))
-    server.listen(MAX_SPIELER)
-    print(f"Skyjo-Server läuft auf Port {PORT}")
-
-    sid = 0
-    while sid < MAX_SPIELER:
-        conn, addr = server.accept()
-        with spiel_lock:
-            spielerdaten[sid] = {"conn": conn, "karten": []}
-        threading.Thread(target=client_thread, args=(conn, sid), daemon=True).start()
-        sid += 1
-
-# ==== Client-Funktionen ====
 class NetworkClient:
     def __init__(self, server_ip, server_port, on_message, on_connected=None):
         self.server_ip = server_ip
@@ -152,116 +60,140 @@ class NetworkClient:
                 print(f"[ERROR] Empfangsfehler: {e}")
                 break
 
-class GameGUI:
-    def __init__(self, root, server_ip, server_port):
-        self.root = root
-        self.root.title("Skyjo Client")
 
-        self.player_id = None
-        self.hand = ["?"] * 12
-        self.revealed = [False] * 12
+spielerdaten = {}
+spiel_lock = threading.Lock()
+SkyjoSpiel = SkyjoGame()
 
-        self.card_buttons = []
-        self.chat_entry = tk.Entry(root, width=40)
-        self.chat_button = tk.Button(root, text="Senden", command=self.send_chat_message)
-        self.chat_display = tk.Text(root, height=10, width=60, state=tk.DISABLED)
-        self.status_label = tk.Label(root, text="Status")
-        self.build_gui()
+config = {
+    "anzahl_spieler": 2,
+    "anzahl_runden": 1
+}
 
-        self.prompt_player_name()
-        self.network = NetworkClient(server_ip, server_port, self.handle_server_message, self.on_connected)
-        self.root.after(100, self.connect_to_server)
+# ==== Netzwerkfunktionen ====
+def karten_ziehen(anzahl):
+    return SkyjoSpiel.draw_cards(anzahl)
 
-    def build_gui(self):
-        for i in range(3):
-            for j in range(4):
-                idx = i * 4 + j
-                btn = tk.Button(self.root, text="?", width=6, state=tk.NORMAL,
-                                command=lambda idx=idx: self.reveal_card(idx))
-                btn.grid(row=i, column=j, padx=5, pady=5)
-                self.card_buttons.append(btn)
+def broadcast(message, exclude=None):
+    raw = json.dumps(message).encode("utf-8") + b"\n"
+    with spiel_lock:
+        for sid, daten in spielerdaten.items():
+            if exclude is not None and sid == exclude:
+                continue
+            try:
+                daten["conn"].sendall(raw)
+            except:
+                continue
 
-        self.status_label.grid(row=3, column=0, columnspan=4)
-        self.chat_display.grid(row=4, column=0, columnspan=4)
-        self.chat_entry.grid(row=5, column=0, columnspan=3)
-        self.chat_button.grid(row=5, column=3)
+# ==== Spiellogik ====
+def spiel_starten():
+    for runde in range(config["anzahl_runden"]):
+        SkyjoSpiel.reset_game()
+        SkyjoSpiel.initialize_deck()
 
-    def prompt_player_name(self):
-        name = None
-        while not name:
-            name = simpledialog.askstring("Spielername", "Gib deinen Spielernamen ein:")
-        self.player_id = name
+        with spiel_lock:
+            SkyjoSpiel.players.clear()
+            for sid in spielerdaten:
+                spieler = Player(str(sid))
+                SkyjoSpiel.add_player(spieler)
+                spielerdaten[sid]["spieler"] = spieler
 
-    def connect_to_server(self):
-        connected = self.network.connect()
-        if not connected:
-            self.status_label.config(text="Verbindung fehlgeschlagen")
+        SkyjoSpiel.deal_initial_cards()
 
-    def on_connected(self):
-        self.status_label.config(text="Verbunden mit Server")
-        self.network.send("join", {"name": self.player_id})
+        for sid in spielerdaten:
+            hand = spielerdaten[sid]["spieler"].hand
+            spielerdaten[sid]["conn"].sendall(json.dumps({
+                "type": "start",
+                "player_id": sid,
+                "hand": hand
+            }).encode("utf-8") + b"\n")
 
-    def send_chat_message(self):
-        text = self.chat_entry.get().strip()
-        if text:
-            self.network.send("chat", {"text": text, "sender": self.player_id})
-            self.chat_entry.delete(0, tk.END)
+        SkyjoSpiel.started = True
+        print("[SERVER] Spielrunde gestartet.")
 
-    def reveal_card(self, idx):
-        self.revealed[idx] = True
-        self.update_gui()
-        self.network.send("reveal_card", {"data": {"index": idx}})
+# ==== Server-Thread pro Client ====
+def client_thread(conn, sid):
+    print(f"[SERVER] Spieler {sid} verbunden.")
 
-    def handle_server_message(self, message):
-        msg_type = message.get("type")
-        data = message.get("data", message)
+    buffer = b""
+    try:
+        while True:
+            chunk = conn.recv(4096)
+            if not chunk:
+                break
+            buffer += chunk
+            while b"\n" in buffer:
+                raw, buffer = buffer.split(b"\n", 1)
+                try:
+                    daten = json.loads(raw.decode("utf-8"))
+                    typ = daten.get("type")
+                    data = daten.get("data", {})
 
-        if msg_type == "start":
-            self.hand = data.get("hand", self.hand)
-            self.status_label.config(text="Spiel gestartet")
-        elif msg_type == "chat":
-            self.display_chat(data.get("sender", "?"), data.get("text", ""))
-        elif msg_type == "reveal_result":
-            idx = data.get("data", {}).get("index")
-            if idx is not None:
-                self.revealed[idx] = True
-        elif msg_type == "card_drawn":
-            card = data.get("card")
-            if card is not None:
-                self.hand.append(card)
+                    if typ == "join":
+                        print(f"[SERVER] Spieler {sid} beigetreten als {data.get('name', 'Spieler')}.")
 
-        self.update_gui()
+                        if len(spielerdaten) == config["anzahl_spieler"]:
+                            threading.Thread(target=spiel_starten, daemon=True).start()
 
-    def update_gui(self):
-        for i, btn in enumerate(self.card_buttons):
-            val = self.hand[i] if self.revealed[i] else "?"
-            btn.config(text=val)
+                    elif typ == "reveal_card":
+                        i = data["data"].get("index", 0) // 4
+                        j = data["data"].get("index", 0) % 4
+                        spieler = spielerdaten[sid]["spieler"]
+                        if not spieler.is_card_revealed(i, j):
+                            wert = spieler.reveal_card(i, j)
+                            print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
+                            broadcast({
+                                "type": "reveal_result",
+                                "data": {"index": i * 4 + j},
+                                "player": sid
+                            })
 
-    def display_chat(self, sender, message):
-        self.chat_display.config(state=tk.NORMAL)
-        self.chat_display.insert(tk.END, f"{sender}: {message}\n")
-        self.chat_display.config(state=tk.DISABLED)
-        self.chat_display.see(tk.END)
+                    elif typ == "chat":
+                        broadcast({
+                            "type": "chat",
+                            "sender": data.get("sender", f"Spieler{sid}"),
+                            "text": data.get("text", "")
+                        })
 
-# ==== Einstiegspunkt ====
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.withdraw()
+                    elif typ == "draw_card":
+                        neue_karte = karten_ziehen(1)[0] if SkyjoSpiel.deck else None
+                        if neue_karte:
+                            spielerdaten[sid]["spieler"].hand.append(neue_karte)
+                            conn.sendall(json.dumps({
+                                "type": "card_drawn",
+                                "card": neue_karte
+                            }).encode("utf-8") + b"\n")
 
-    modus = simpledialog.askstring("Modus", "Host oder Client?")
-    if modus is None:
-        sys.exit(0)
+                except json.JSONDecodeError:
+                    print("[SERVER] Ungültige Nachricht erhalten.")
+    except:
+        print(f"[SERVER] Spieler {sid} getrennt.")
+    finally:
+        with spiel_lock:
+            if sid in spielerdaten:
+                del spielerdaten[sid]
+        conn.close()
 
-    modus = modus.lower()
+# ==== Haupt-Serverfunktion ====
+def server_starten(konfig):
+    print("[DEBUG] server_starten() wurde aufgerufen")
+    global config
+    config = konfig
 
-    if modus == "host":
-        threading.Thread(target=server_starten, daemon=True).start()
-        root.deiconify()
-        app = GameGUI(root, "localhost", PORT)
-        root.mainloop()
-    elif modus == "client":
-        ip = simpledialog.askstring("IP-Adresse", "IP des Hosts eingeben:")
-        if ip:
-            root.deiconify()
-            app = GameGUI(root, ip, PORT)
-            root.mainloop()
+    SkyjoSpiel.reset_game()
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("0.0.0.0", PORT))
+    server.listen(10)
+    print(f"[SERVER] Skyjo-Server gestartet auf Port {PORT}")
+
+    sid = 0
+    while True:
+        conn, addr = server.accept()
+        with spiel_lock:
+            if len(spielerdaten) >= config["anzahl_spieler"]:
+                conn.close()
+                continue
+            spielerdaten[sid] = {"conn": conn}
+        threading.Thread(target=client_thread, args=(conn, sid), daemon=True).start()
+        sid += 1
+
