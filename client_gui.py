@@ -12,7 +12,7 @@ class GameGUI:
         self.player_id = None
         self.hand = ["?"] * 12
         self.revealed = [False] * 12
-        self.is_my_turn = False  # NEU: Wer ist am Zug?
+        self.is_my_turn = False  # Flag: bin ich am Zug?
 
         self.card_buttons = []
         self.chat_entry = tk.Entry(root, width=40)
@@ -44,6 +44,7 @@ class GameGUI:
         while not name:
             name = simpledialog.askstring("Spielername", "Gib deinen Spielernamen ein:")
         self.player_id = str(name)
+        print(f"[DEBUG] Spielername gesetzt: {self.player_id}")
 
     def connect_to_server(self):
         connected = self.network.connect()
@@ -52,6 +53,7 @@ class GameGUI:
 
     def on_connected(self):
         self.status_label.config(text="Verbunden mit Server")
+        print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")
         self.network.send("join", {"name": self.player_id})
 
     def send_chat_message(self):
@@ -63,11 +65,14 @@ class GameGUI:
     def reveal_card(self, idx):
         if not self.is_my_turn:
             self.status_label.config(text="Nicht dein Zug!")
+            print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
         if self.revealed[idx]:
-            return  # Bereits aufgedeckt
+            print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
+            return
 
+        print(f"[DEBUG] Aufdecken von Karte {idx}")
         self.revealed[idx] = True
         self.update_gui()
         self.network.send("reveal_card", {"data": {"index": idx}})
@@ -75,6 +80,8 @@ class GameGUI:
     def handle_server_message(self, message):
         msg_type = message.get("type")
         data = message.get("data", message)
+
+        print(f"[DEBUG] Nachricht vom Server: {msg_type} – {data}")
 
         if msg_type == "start":
             self.hand = data.get("hand", self.hand)
@@ -87,8 +94,9 @@ class GameGUI:
         elif msg_type == "reveal_result":
             idx = data.get("data", {}).get("index")
             player = message.get("player")
-            if idx is not None and player == self.player_id:
+            if idx is not None:
                 self.revealed[idx] = True
+                print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
             self.update_gui()
 
         elif msg_type == "card_drawn":
@@ -99,7 +107,9 @@ class GameGUI:
 
         elif msg_type == "turn":
             current = data
+            print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))
+            print(f"[DEBUG] Bin ich dran? {self.is_my_turn}")
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
             else:
@@ -107,12 +117,16 @@ class GameGUI:
             self.update_gui()
 
     def update_gui(self):
+        print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
             btn.config(text=val)
 
             # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
-            btn.config(state=tk.NORMAL if self.is_my_turn and not self.revealed[i] else tk.DISABLED)
+            if self.is_my_turn and not self.revealed[i]:
+                btn.config(state=tk.NORMAL)
+            else:
+                btn.config(state=tk.DISABLED)
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
