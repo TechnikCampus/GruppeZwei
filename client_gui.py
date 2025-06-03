@@ -106,7 +106,7 @@ class GameGUI:
             self.update_gui()
 
         elif msg_type == "turn":
-            current = data
+            current = data.get("player")
             print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))
             print(f"[DEBUG] Bin ich dran? {self.is_my_turn}")
