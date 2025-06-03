@@ -99,7 +99,7 @@ class GameGUI:
 
         elif msg_type == "turn":
             current = data
-            self.is_my_turn = (current == self.player_id)
+            self.is_my_turn = (str(current) == str(self.player_id))
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
             else:
