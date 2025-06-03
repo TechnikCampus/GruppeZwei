@@ -12,6 +12,7 @@ config = {
     "anzahl_runden": 1
 }
 
+
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -22,6 +23,7 @@ def get_local_ip():
     finally:
         s.close()
     return IP
+
 
 def start_host():
     # Spieleranzahl und Rundenzahl abfragen
@@ -45,6 +47,7 @@ def start_host():
     app = GameGUI(gui_root, "localhost", PORT)
     gui_root.mainloop()
 
+
 def start_client():
     ip = simpledialog.askstring("Client", "Gib die IP-Adresse des Hosts ein:")
     if ip:
@@ -52,6 +55,7 @@ def start_client():
         gui_root = tk.Tk()
         app = GameGUI(gui_root, ip, PORT)
         gui_root.mainloop()
+
 
 if __name__ == "__main__":
     root = tk.Tk()

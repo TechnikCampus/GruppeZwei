@@ -9,6 +9,7 @@ from class_player import Player
 # ==== Konfiguration & Spielstatus ====
 PORT = 65435
 
+
 class NetworkClient:
     def __init__(self, server_ip, server_port, on_message, on_connected=None):
         self.server_ip = server_ip
@@ -60,6 +61,7 @@ class NetworkClient:
                 print(f"[ERROR] Empfangsfehler: {e}")
                 break
 
+
 spielerdaten = {}
 letzte_aktion = {}
 spiel_lock = threading.Lock()
@@ -70,9 +72,11 @@ config = {
     "anzahl_runden": 1
 }
 
+
 # ==== Netzwerkfunktionen ====
 def karten_ziehen(anzahl):
     return SkyjoSpiel.draw_cards(anzahl)
+
 
 def broadcast(message, exclude=None):
     raw = json.dumps(message).encode("utf-8") + b"\n"
@@ -85,9 +89,10 @@ def broadcast(message, exclude=None):
             except:
                 continue
 
+
 # ==== Spiellogik ====
 def spiel_starten():
-global letzte_aktion
+    global letzte_aktion
 
     for runde in range(config["anzahl_runden"]):
         SkyjoSpiel.reset_game()
@@ -119,7 +124,7 @@ global letzte_aktion
             "player": SkyjoSpiel.get_current_player().id
         })
     letzte_aktion = {}
-    
+
 
 # ==== Server-Thread pro Client ====
 def client_thread(conn, sid):
@@ -149,32 +154,32 @@ def client_thread(conn, sid):
                         if current_player is None or current_player.id != str(sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
                             continue
-                        
+
                         # Nur eine Aktion pro Zug erlauben
                         if letzte_aktion.get(sid, False):
                             print(f"[SERVER] Spieler {sid} hat in diesem Zug bereits eine Karte aufgedeckt.")
                             continue
-                        
+
                         index = data["data"].get("index", 0)
                         i = index // 4
                         j = index % 4
-                    
+
                         spieler = spielerdaten[sid]["spieler"]
-                    
+
                         if not spieler.is_card_revealed(i, j):
                             wert = spieler.reveal_card(i, j)
                             print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
-                    
+
                             # Merke: Spieler hat in diesem Zug bereits gehandelt
                             letzte_aktion[sid] = True
-                    
+
                             # Nachricht an alle Clients
                             broadcast({
                                 "type": "reveal_result",
                                 "data": {"index": i * 4 + j},
                                 "player": sid
                             })
-                    
+
                             if SkyjoSpiel.check_for_end(spieler):
                                 print(f"[SERVER] Spieler {sid} hat alle Karten aufgedeckt – Spielende.")
                                 broadcast({
@@ -215,6 +220,7 @@ def client_thread(conn, sid):
             if sid in spielerdaten:
                 del spielerdaten[sid]
         conn.close()
+
 
 # ==== Haupt-Serverfunktion ====
 def server_starten(konfig):

@@ -4,6 +4,7 @@ from Server_Client import NetworkClient
 
 PORT = 65435
 
+
 class GameGUI:
     def __init__(self, root, server_ip, server_port):
         self.root = root
@@ -19,6 +20,8 @@ class GameGUI:
         self.chat_button = tk.Button(root, text="Senden", command=self.send_chat_message)
         self.chat_display = tk.Text(root, height=10, width=60, state=tk.DISABLED)
         self.status_label = tk.Label(root, text="Status")
+        self.deck_label = tk.Label(self.root, text="Stapel: ? Karten")
+        self.deck_label.grid(row=6, column=0, columnspan=2)
         self.build_gui()
 
         self.prompt_player_name()
@@ -33,6 +36,8 @@ class GameGUI:
                                 command=lambda idx=idx: self.reveal_card(idx))
                 btn.grid(row=i, column=j, padx=5, pady=5)
                 self.card_buttons.append(btn)
+
+        self.deck_label.grid(row=1, column=4, rowspan=2, padx=10, pady=10, sticky="n")
 
         self.status_label.grid(row=3, column=0, columnspan=4)
         self.chat_display.grid(row=4, column=0, columnspan=4)
@@ -115,6 +120,10 @@ class GameGUI:
             else:
                 self.status_label.config(text=f"{current} ist am Zug")
             self.update_gui()
+
+        elif msg_type == "deck_update":
+            deck_count = data.get("deck_count", "?")
+            self.deck_label.config(text=f"Stapel: {deck_count} Karten")
 
     def update_gui(self):
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
