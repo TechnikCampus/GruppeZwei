@@ -11,7 +11,19 @@ import player as Player
 import random
 # import pygame
 
+<<<<<<< Updated upstream
 anzahlSpieler = 4   # Anzahl der Spieler / muss über den Host festgelegt werden
+=======
+
+
+
+
+anzahlSpieler = 4   # Anzahl der Spieler, soll vom Host empfangen werden
+anzahlSpiel = 4     # Anzahl der zu spielenden Spiel, vom Host
+firstTurn = 1
+lastTurn = anzahlSpieler - 1
+end_player_index = None
+>>>>>>> Stashed changes
 
 skyjo_karten = (
     *([-2] * 5),
