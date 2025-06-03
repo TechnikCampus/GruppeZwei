@@ -12,6 +12,7 @@ class GameGUI:
         self.player_id = None
         self.hand = ["?"] * 12
         self.revealed = [False] * 12
+        self.is_my_turn = False  # NEU: Wer ist am Zug?
 
         self.card_buttons = []
         self.chat_entry = tk.Entry(root, width=40)
@@ -28,7 +29,7 @@ class GameGUI:
         for i in range(3):
             for j in range(4):
                 idx = i * 4 + j
-                btn = tk.Button(self.root, text="?", width=6, state=tk.NORMAL,
+                btn = tk.Button(self.root, text="?", width=6, state=tk.DISABLED,
                                 command=lambda idx=idx: self.reveal_card(idx))
                 btn.grid(row=i, column=j, padx=5, pady=5)
                 self.card_buttons.append(btn)
@@ -60,6 +61,13 @@ class GameGUI:
             self.chat_entry.delete(0, tk.END)
 
     def reveal_card(self, idx):
+        if not self.is_my_turn:
+            self.status_label.config(text="Nicht dein Zug!")
+            return
+
+        if self.revealed[idx]:
+            return  # Bereits aufgedeckt
+
         self.revealed[idx] = True
         self.update_gui()
         self.network.send("reveal_card", {"data": {"index": idx}})
@@ -71,23 +79,40 @@ class GameGUI:
         if msg_type == "start":
             self.hand = data.get("hand", self.hand)
             self.status_label.config(text="Spiel gestartet")
+            self.update_gui()
+
         elif msg_type == "chat":
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
+
         elif msg_type == "reveal_result":
             idx = data.get("data", {}).get("index")
-            if idx is not None:
+            player = message.get("player")
+            if idx is not None and player == self.player_id:
                 self.revealed[idx] = True
+            self.update_gui()
+
         elif msg_type == "card_drawn":
             card = data.get("card")
             if card is not None:
                 self.hand.append(card)
+            self.update_gui()
 
-        self.update_gui()
+        elif msg_type == "turn":
+            current = data
+            self.is_my_turn = (current == self.player_id)
+            if self.is_my_turn:
+                self.status_label.config(text="Du bist am Zug!")
+            else:
+                self.status_label.config(text=f"{current} ist am Zug")
+            self.update_gui()
 
     def update_gui(self):
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
             btn.config(text=val)
+
+            # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
+            btn.config(state=tk.NORMAL if self.is_my_turn and not self.revealed[i] else tk.DISABLED)
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)

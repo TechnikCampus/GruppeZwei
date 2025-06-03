@@ -60,7 +60,6 @@ class NetworkClient:
                 print(f"[ERROR] Empfangsfehler: {e}")
                 break
 
-
 spielerdaten = {}
 spiel_lock = threading.Lock()
 SkyjoSpiel = SkyjoGame()
@@ -111,6 +110,12 @@ def spiel_starten():
         SkyjoSpiel.started = True
         print("[SERVER] Spielrunde gestartet.")
 
+        # Ersten Spieler benachrichtigen
+        broadcast({
+            "type": "turn",
+            "player": SkyjoSpiel.get_current_player().id
+        })
+
 # ==== Server-Thread pro Client ====
 def client_thread(conn, sid):
     print(f"[SERVER] Spieler {sid} verbunden.")
@@ -131,22 +136,44 @@ def client_thread(conn, sid):
 
                     if typ == "join":
                         print(f"[SERVER] Spieler {sid} beigetreten als {data.get('name', 'Spieler')}.")
-
                         if len(spielerdaten) == config["anzahl_spieler"]:
                             threading.Thread(target=spiel_starten, daemon=True).start()
 
                     elif typ == "reveal_card":
-                        i = data["data"].get("index", 0) // 4
-                        j = data["data"].get("index", 0) % 4
+                        current_player = SkyjoSpiel.get_current_player()
+                        if current_player is None or current_player.id != str(sid):
+                            print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
+                            continue
+
+                        index = data["data"].get("index", 0)
+                        i = index // 4
+                        j = index % 4
+
                         spieler = spielerdaten[sid]["spieler"]
+
                         if not spieler.is_card_revealed(i, j):
                             wert = spieler.reveal_card(i, j)
                             print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
+
                             broadcast({
                                 "type": "reveal_result",
                                 "data": {"index": i * 4 + j},
                                 "player": sid
                             })
+
+                            if SkyjoSpiel.check_for_end(spieler):
+                                print(f"[SERVER] Spieler {sid} hat alle Karten aufgedeckt – Spielende.")
+                                broadcast({
+                                    "type": "game_over",
+                                    "winner": sid
+                                })
+                            else:
+                                SkyjoSpiel.next_turn()
+                                next_id = SkyjoSpiel.get_current_player().id
+                                broadcast({
+                                    "type": "turn",
+                                    "player": next_id
+                                })
 
                     elif typ == "chat":
                         broadcast({
@@ -196,4 +223,3 @@ def server_starten(konfig):
             spielerdaten[sid] = {"conn": conn}
         threading.Thread(target=client_thread, args=(conn, sid), daemon=True).start()
         sid += 1
-
