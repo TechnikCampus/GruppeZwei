@@ -43,7 +43,7 @@ class GameGUI:
         name = None
         while not name:
             name = simpledialog.askstring("Spielername", "Gib deinen Spielernamen ein:")
-        self.player_id = name
+        self.player_id = str(name)
 
     def connect_to_server(self):
         connected = self.network.connect()
