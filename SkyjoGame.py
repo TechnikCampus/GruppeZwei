@@ -103,5 +103,6 @@ class SkyjoGame:
                 player.set_card(2, i, None)
 
     def check_for_end(self, player: Player):
-        if player.all_cards_revealed:
+        if player.all_cards_revealed():
             return True
+        return False

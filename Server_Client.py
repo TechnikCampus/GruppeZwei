@@ -114,6 +114,8 @@ def spiel_starten():
                 "player_id": sid,
                 "hand": hand
             }).encode("utf-8") + b"\n")
+        
+        letzte_aktion = {sid: False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
 
         SkyjoSpiel.started = True
         print("[SERVER] Spielrunde gestartet.")
@@ -152,6 +154,7 @@ def client_thread(conn, sid):
 
                     elif typ == "reveal_card":
                         current_player = SkyjoSpiel.get_current_player()
+                        print(f"[DEBUG] Aktueller Spieler laut Server: {current_player.id if current_player else 'None'} | Aktuell anfragender: {sid}")
                         if current_player is None or current_player.id != str(sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
                             continue
@@ -190,6 +193,7 @@ def client_thread(conn, sid):
                             else:
                                 SkyjoSpiel.next_turn()
                                 next_id = SkyjoSpiel.get_current_player().id
+                                print(f"[DEBUG] Nächster Spieler ist: {next_id}")
                                 letzte_aktion[next_id] = False  # neuen Spieler vorbereiten
                                 broadcast({
                                     "type": "turn",
