@@ -29,6 +29,7 @@ class SkyjoGame:
 
     def next_turn(self):        # Nächster Spieler am Zug
         self.current_turn = (self.current_turn + 1) % len(self.players)
+        print(f"[DEBUG][SkyjoGame] next_turn: current_turn={self.current_turn}, player_id={self.players[self.current_turn].id}")
 
     def get_current_player(self):   	    # Aktuellen Spieler zurückgeben
         return self.players[self.current_turn] if self.players else None

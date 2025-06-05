@@ -115,7 +115,11 @@ def spiel_starten():
                 "hand": hand
             }).encode("utf-8") + b"\n")
         
-        letzte_aktion = {sid: False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
+        letzte_aktion = {str(sid): False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
+        # Entferne alle int-Keys, falls noch vorhanden
+        for k in list(letzte_aktion.keys()):
+            if isinstance(k, int):
+                del letzte_aktion[k]
 
         SkyjoSpiel.started = True
         print("[SERVER] Spielrunde gestartet.")
@@ -125,7 +129,7 @@ def spiel_starten():
             "type": "turn",
             "player": SkyjoSpiel.get_current_player().id
         })
-    letzte_aktion = {}
+
 
 
 # ==== Server-Thread pro Client ====
@@ -155,12 +159,13 @@ def client_thread(conn, sid):
                     elif typ == "reveal_card":
                         current_player = SkyjoSpiel.get_current_player()
                         print(f"[DEBUG] Aktueller Spieler laut Server: {current_player.id if current_player else 'None'} | Aktuell anfragender: {sid}")
+                        print(f"[DEBUG] letzte_aktion vor Prüfung: {letzte_aktion}")
                         if current_player is None or current_player.id != str(sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
                             continue
 
                         # Nur eine Aktion pro Zug erlauben
-                        if letzte_aktion.get(sid, False):
+                        if letzte_aktion.get(str(sid), False):
                             print(f"[SERVER] Spieler {sid} hat in diesem Zug bereits eine Karte aufgedeckt.")
                             continue
 
@@ -175,7 +180,8 @@ def client_thread(conn, sid):
                             print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
 
                             # Merke: Spieler hat in diesem Zug bereits gehandelt
-                            letzte_aktion[sid] = True
+                            letzte_aktion[str(sid)] = True
+                            print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion}")
 
                             # Nachricht an alle Clients
                             broadcast({
@@ -194,10 +200,13 @@ def client_thread(conn, sid):
                                 SkyjoSpiel.next_turn()
                                 next_id = SkyjoSpiel.get_current_player().id
                                 print(f"[DEBUG] Nächster Spieler ist: {next_id}")
-                                letzte_aktion[next_id] = False  # neuen Spieler vorbereiten
+                                for k in letzte_aktion:
+                                    letzte_aktion[k] = True
+                                letzte_aktion[str(next_id)] = False
+                                print(f"[DEBUG] letzte_aktion nach Spielerwechsel: {letzte_aktion}")
                                 broadcast({
                                     "type": "turn",
-                                    "player": next_id
+                                    "player": str(next_id)
                                 })
 
                     elif typ == "chat":
