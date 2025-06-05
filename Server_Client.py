@@ -1,7 +1,7 @@
 import socket
 import threading
 import json
-import random
+# import random
 
 from SkyjoGame import SkyjoGame
 from class_player import Player
@@ -102,8 +102,8 @@ def spiel_starten():
             SkyjoSpiel.players.clear()
             for sid in spielerdaten:
                 spieler = Player(str(sid))
-                SkyjoSpiel.add_player(spieler)
                 spielerdaten[sid]["spieler"] = spieler
+                SkyjoSpiel.add_player(spieler)
 
         SkyjoSpiel.deal_initial_cards()
 
@@ -146,6 +146,7 @@ def client_thread(conn, sid):
 
                     if typ == "join":
                         print(f"[SERVER] Spieler {sid} beigetreten als {data.get('name', 'Spieler')}.")
+                        spielerdaten[sid]["name"] = data.get("name", f"Spieler{sid}")
                         if len(spielerdaten) == config["anzahl_spieler"]:
                             threading.Thread(target=spiel_starten, daemon=True).start()
 
@@ -198,7 +199,7 @@ def client_thread(conn, sid):
                     elif typ == "chat":
                         broadcast({
                             "type": "chat",
-                            "sender": data.get("sender", f"Spieler{sid}"),
+                            "sender": spielerdaten[sid]["name"],
                             "text": data.get("text", "")
                         })
 
@@ -210,6 +211,10 @@ def client_thread(conn, sid):
                                 "type": "card_drawn",
                                 "card": neue_karte
                             }).encode("utf-8") + b"\n")
+                            broadcast({
+                                "type": "deck_update",
+                                "deck_count": len(SkyjoSpiel.deck)
+                            })
 
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")

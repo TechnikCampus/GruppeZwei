@@ -90,6 +90,7 @@ class GameGUI:
 
         if msg_type == "start":
             self.hand = data.get("hand", self.hand)
+            self.player_id = str(data.get("player_id"))
             self.status_label.config(text="Spiel gestartet")
             self.update_gui()
 
