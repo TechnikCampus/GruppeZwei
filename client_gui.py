@@ -37,9 +37,11 @@ class GameGUI:
                 btn.grid(row=i, column=j, padx=5, pady=5)                                   # Platziert Button im Grid
                 self.card_buttons.append(btn)                                               # Fügt aktuellen Button der Liste hinzu
 
-        self.deck_label.grid(row=1, column=4, rowspan=2, padx=10, pady=10, sticky="n")      # Platziert Label des Kartenstappel im Grid
+        self.deck_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
+        self.deck_button.grid(row=1, column=5, padx=5, pady=5)                                # Platziert Button im Grid
 
-                                                                                            # Button hinzufügen für Kartenstappel bzw neue Karte Ziehen
+        self._button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
+        self.deck_button.grid(row=1, column=5, padx=5, pady=5)   
 
         self.status_label.grid(row=3, column=0, columnspan=4)                               # Platziert Status Label im Grid
         self.chat_display.grid(row=4, column=0, columnspan=4)                               # Platziert Chat im Grid
@@ -84,36 +86,36 @@ class GameGUI:
         self.update_gui()
         self.network.send("reveal_card", {"data": {"index": idx}})
 
-    def handle_server_message(self, message):
-        msg_type = message.get("type")
+    def handle_server_message(self, message):                                               # Methode zum Empfangen vom Server
+        msg_type = message.get("type")                                                      # speichert Typ und Daten der Nachricht ab
         data = message.get("data", message)
 
         print(f"[DEBUG] Nachricht vom Server: {msg_type} – {data}")
 
-        if msg_type == "start":
+        if msg_type == "start":                                                             # Wenn Start empfangen wurde dann werden die Daten für den jeweiligen Spieler gespeichert
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
             self.status_label.config(text="Spiel gestartet")
             self.update_gui()
 
-        elif msg_type == "chat":
+        elif msg_type == "chat":                                                            # Wenn Chat empfangen wurde dann wird die Nachricht und der Text geprintet
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
 
-        elif msg_type == "reveal_result":
-            idx = data.get("data", {}).get("index")
+        elif msg_type == "reveal_result":                                                   # Wenn eine Karte umgedreht wurde wird sich  der entsprechende Index geholt und geprüft ob idx ein gültiger Wert ist
+            idx = data.get("data", {}).get("index")                                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist 
             player = message.get("player")
             if idx is not None:
                 self.revealed[idx] = True
                 print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
             self.update_gui()
 
-        elif msg_type == "card_drawn":
+        elif msg_type == "card_drawn":                                                      # Wenn neue Karte gezogem wird dann wird diese Karte der Hand übergeben
             card = data.get("card")
             if card is not None:
                 self.hand.append(card)
             self.update_gui()
 
-        elif msg_type == "turn":
+        elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert 
             current = data.get("player")
             print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))
@@ -121,14 +123,14 @@ class GameGUI:
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
             else:
-                self.status_label.config(text=f"{current} ist am Zug")
+                self.status_label.config(text=f"{data.get("name", "?")} ist am Zug")
             self.update_gui()
 
-        elif msg_type == "deck_update":
+        elif msg_type == "deck_update":                                                     # Fragt die Anzahl der Karten im Stappel ab  #Anmerkung: wahrscheinlich redundant
             deck_count = data.get("deck_count", "?")
             self.deck_label.config(text=f"Stapel: {deck_count} Karten")
 
-    def update_gui(self):
+    def update_gui(self):                                                                   # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
@@ -145,3 +147,6 @@ class GameGUI:
         self.chat_display.insert(tk.END, f"{sender}: {message}\n")
         self.chat_display.config(state=tk.DISABLED)
         self.chat_display.see(tk.END)
+
+    def deck_draw_card(self):
+        pass

@@ -206,7 +206,8 @@ def client_thread(conn, sid):
                                 print(f"[DEBUG] letzte_aktion nach Spielerwechsel: {letzte_aktion}")
                                 broadcast({
                                     "type": "turn",
-                                    "player": str(next_id)
+                                    "player": str(next_id),
+                                    "name": spielerdaten[sid]["name"]
                                 })
 
                     elif typ == "chat":
