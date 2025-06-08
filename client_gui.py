@@ -40,8 +40,8 @@ class GameGUI:
         self.deck_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
         self.deck_button.grid(row=1, column=5, padx=5, pady=5)                                # Platziert Button im Grid
 
-        self._button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
-        self.deck_button.grid(row=1, column=5, padx=5, pady=5)   
+        self.discard_pile_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.discard_pile_draw)      # Platziert Label des Kartenstappel im Grid
+        self.discard_pile_button.grid(row=2, column=5, padx=5, pady=5)
 
         self.status_label.grid(row=3, column=0, columnspan=4)                               # Platziert Status Label im Grid
         self.chat_display.grid(row=4, column=0, columnspan=4)                               # Platziert Chat im Grid
@@ -149,4 +149,7 @@ class GameGUI:
         self.chat_display.see(tk.END)
 
     def deck_draw_card(self):
+        pass
+
+    def discard_pile_draw(self):
         pass
