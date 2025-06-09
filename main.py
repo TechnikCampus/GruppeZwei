@@ -18,6 +18,7 @@ def get_local_ip():
     try:
         s.connect(("10.255.255.255", 1))                    # Verbindungsaufbau mit nicht erreichbaren IP
         IP = s.getsockname()[0]                             # gibt IP des Servers wieder
+        print(IP)
     except Exception:
         IP = "127.0.0.1"                                    # falls keine ermittelt werden konnte wird 127.0.0.1 wiedergegeben
     finally:

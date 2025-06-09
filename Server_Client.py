@@ -1,8 +1,6 @@
 import socket
 import threading
 import json
-# import random
-
 from SkyjoGame import SkyjoGame
 from class_player import Player
 
@@ -10,7 +8,7 @@ from class_player import Player
 PORT = 65435
 
 
-class NetworkClient:
+class NetworkClient:                                                            #Anmerkung: Klasse als eigene Datei machen
     def __init__(self, server_ip, server_port, on_message, on_connected=None):
         self.server_ip = server_ip
         self.server_port = server_port
@@ -112,7 +110,8 @@ def spiel_starten():
             spielerdaten[sid]["conn"].sendall(json.dumps({
                 "type": "start",
                 "player_id": sid,
-                "hand": hand
+                "hand": hand,
+                "discard_pile": SkyjoSpiel.discard_pile
             }).encode("utf-8") + b"\n")
         
         letzte_aktion = {str(sid): False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
@@ -129,7 +128,6 @@ def spiel_starten():
             "type": "turn",
             "player": SkyjoSpiel.get_current_player().id
         })
-
 
 
 # ==== Server-Thread pro Client ====

@@ -49,6 +49,7 @@ class SkyjoGame:
     def deal_initial_cards(self):
         for player in self.players:
             player.hand = self.draw_cards(12)
+        self.discard_pile.append(self.deck.pop())
 
     def draw_cards(self, amount):
         return [self.deck.pop() for _ in range(amount) if self.deck]

@@ -14,8 +14,11 @@ class GameGUI:
         self.hand = ["?"] * 12                                      # Kartendeck des einzelnen
         self.revealed = [False] * 12                                # Liste der umgedrehten Karten
         self.is_my_turn = False                                     # Abfrage: bin ich am Zug?
+        self.discard_pile = []
+        self.discard_pile_top = "?"
 
         self.card_buttons = []                                      # liste aller Tkinter Buttons
+        self.piles = []
         self.chat_entry = tk.Entry(self.root, width=40)                  # initialisiert Eingabefeld für Chat
         self.chat_button = tk.Button(self.root, text="Senden", command=self.send_chat_message)   # Senden Button für Chat
         self.chat_display = tk.Text(self.root, height=10, width=60, state=tk.DISABLED)           # Textfeld für Chatnachrichten
@@ -37,11 +40,13 @@ class GameGUI:
                 btn.grid(row=i, column=j, padx=5, pady=5)                                   # Platziert Button im Grid
                 self.card_buttons.append(btn)                                               # Fügt aktuellen Button der Liste hinzu
 
-        self.deck_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
-        self.deck_button.grid(row=1, column=5, padx=5, pady=5)                                # Platziert Button im Grid
+        deck_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
+        deck_button.grid(row=1, column=5, padx=5, pady=5)                                # Platziert Button im Grid
+        self.piles.append(deck_button)
 
-        self.discard_pile_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.discard_pile_draw)      # Platziert Label des Kartenstappel im Grid
-        self.discard_pile_button.grid(row=2, column=5, padx=5, pady=5)
+        discard_pile_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.discard_pile_draw)      # Platziert Label des Kartenstappel im Grid
+        discard_pile_button.grid(row=2, column=5, padx=5, pady=5)
+        self.piles.append(discard_pile_button)
 
         self.status_label.grid(row=3, column=0, columnspan=4)                               # Platziert Status Label im Grid
         self.chat_display.grid(row=4, column=0, columnspan=4)                               # Platziert Chat im Grid
@@ -96,6 +101,11 @@ class GameGUI:
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
             self.status_label.config(text="Spiel gestartet")
+            self.discard_pile = data.get("discard_pile", "?")
+            if self.discard_pile:
+                self.discard_pile_top = self.discard_pile[-1]
+            else:
+                self.discard_pile_top = "?"
             self.update_gui()
 
         elif msg_type == "chat":                                                            # Wenn Chat empfangen wurde dann wird die Nachricht und der Text geprintet
@@ -130,7 +140,8 @@ class GameGUI:
             deck_count = data.get("deck_count", "?")
             self.deck_label.config(text=f"Stapel: {deck_count} Karten")
 
-    def update_gui(self):                                                                   # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
+    def update_gui(self): 
+        deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
@@ -141,6 +152,15 @@ class GameGUI:
                 btn.config(state=tk.NORMAL)
             else:
                 btn.config(state=tk.DISABLED)
+
+        if self.is_my_turn:
+            deck_button.config(state=tk.NORMAL)
+            discard_pile_button.config(state=tk.NORMAL)
+        else:
+            deck_button.config(state=tk.DISABLED)
+            discard_pile_button.config(state=tk.DISABLED)
+
+        discard_pile_button.config(text=str(self.discard_pile_top))
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
