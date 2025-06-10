@@ -17,6 +17,7 @@ class GameGUI:
         self.is_my_turn = False                                     # Abfrage: bin ich am Zug?
         self.discard_pile = []
         self.discard_pile_top = "?"
+        self.draw_count = 0
 
         self.card_buttons = []                                      # liste aller Tkinter Buttons
         self.piles = []
@@ -132,6 +133,7 @@ class GameGUI:
             print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))
             print(f"[DEBUG] Bin ich dran? {self.is_my_turn}")
+            self.draw_count = 0
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
             else:
@@ -147,6 +149,7 @@ class GameGUI:
         elif msg_type == "deck_drawn_card":
             self.discard_pile_top = data.get("card", "?")
             self.update_gui()
+            self.draw_count += 1
 
     def update_gui(self): 
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
@@ -161,7 +164,7 @@ class GameGUI:
             else:
                 btn.config(state=tk.DISABLED)
 
-        if self.is_my_turn:
+        if self.is_my_turn and self.draw_count < 1:
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
         else:
