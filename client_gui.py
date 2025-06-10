@@ -167,6 +167,9 @@ class GameGUI:
         if self.is_my_turn and self.draw_count < 1:
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
+        elif self.is_my_turn and self.draw_count >= 1:
+            deck_button.config(state=tk.DISABLED)
+            discard_pile_button.config(state=tk.NORMAL)
         else:
             deck_button.config(state=tk.DISABLED)
             discard_pile_button.config(state=tk.DISABLED)
