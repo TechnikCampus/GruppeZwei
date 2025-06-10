@@ -107,6 +107,7 @@ class GameGUI:
                 self.discard_pile_top = self.discard_pile[-1]
             else:
                 self.discard_pile_top = "?"
+
             self.update_gui()
 
         elif msg_type == "chat":                                                            # Wenn Chat empfangen wurde dann wird die Nachricht und der Text geprintet
@@ -140,6 +141,12 @@ class GameGUI:
         elif msg_type == "deck_update":                                                     # Fragt die Anzahl der Karten im Stappel ab  #Anmerkung: wahrscheinlich redundant
             deck_count = data.get("deck_count", "?")
             self.deck_label.config(text=f"Stapel: {deck_count} Karten")
+            self.discard_pile_top = data.get("card", "?")
+            self.update_gui()
+
+        elif msg_type == "deck_drawn_card":
+            self.discard_pile_top = data.get("card", "?")
+            self.update_gui()
 
     def update_gui(self): 
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
@@ -170,7 +177,14 @@ class GameGUI:
         self.chat_display.see(tk.END)
 
     def deck_draw_card(self):
-        pass
+        if not self.is_my_turn:                                                             # Abfrage ob Spieler dran ist
+            self.status_label.config(text="Nicht dein Zug!")                                #Anmerkung: ist bestimmt eleganter zu lösen!
+            print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
+            return
+        
+        self.network.send("deck_draw_card")
+
+        # self.discard_pile.append(self.deck.pop(0))
 
     def discard_pile_draw(self):
         pass

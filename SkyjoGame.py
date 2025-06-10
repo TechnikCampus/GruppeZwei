@@ -54,14 +54,12 @@ class SkyjoGame:
     def draw_cards(self, amount):
         return [self.deck.pop() for _ in range(amount) if self.deck]
 
-    def player_draw_new_card(self, player: Player):
-        if self.started and player == self.get_current_player():
-            if self.deck:
-                # card = self.deck.pop()
-                # player.hand.append(card)
-                # return card
-                self.discard_pile.append(self.deck.pop())
-        return None
+    def draw_new_card(self):
+        if self.deck:
+            # card = self.deck.pop()
+            # player.hand.append(card)
+            # return card
+            return self.deck.pop(0)
 
     def player_ready(self, player: Player):
         player.is_ready = True

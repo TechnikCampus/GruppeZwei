@@ -71,10 +71,6 @@ config = {
 }
 
 
-# ==== Netzwerkfunktionen ====
-def karten_ziehen(anzahl):
-    return SkyjoSpiel.draw_cards(anzahl)
-
 
 def broadcast(message, exclude=None):
     raw = json.dumps(message).encode("utf-8") + b"\n"
@@ -111,7 +107,8 @@ def spiel_starten():
                 "type": "start",
                 "player_id": sid,
                 "hand": hand,
-                "discard_pile": SkyjoSpiel.discard_pile
+                "discard_pile": SkyjoSpiel.discard_pile,
+
             }).encode("utf-8") + b"\n")
         
         letzte_aktion = {str(sid): False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
@@ -215,18 +212,22 @@ def client_thread(conn, sid):
                             "text": data.get("text", "")
                         })
 
-                    elif typ == "draw_card":
-                        neue_karte = karten_ziehen(1)[0] if SkyjoSpiel.deck else None
+                    elif typ == "deck_draw_card":
+                        neue_karte = SkyjoSpiel.draw_new_card() if SkyjoSpiel.deck else None
                         if neue_karte:
-                            spielerdaten[sid]["spieler"].hand.append(neue_karte)
+                            SkyjoSpiel.discard_pile.append(neue_karte)
                             conn.sendall(json.dumps({
-                                "type": "card_drawn",
+                                "type": "deck_drawn_card",
                                 "card": neue_karte
                             }).encode("utf-8") + b"\n")
                             broadcast({
                                 "type": "deck_update",
-                                "deck_count": len(SkyjoSpiel.deck)
+                                "deck_count": len(SkyjoSpiel.deck),
+                                "card": neue_karte
                             })
+                    
+                    elif typ == "":
+                        pass
 
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
