@@ -29,6 +29,7 @@ class SkyjoGame:
 
     def next_turn(self):        # Nächster Spieler am Zug
         self.current_turn = (self.current_turn + 1) % len(self.players)
+        print(f"[DEBUG][SkyjoGame] next_turn: current_turn={self.current_turn}, player_id={self.players[self.current_turn].id}")
 
     def get_current_player(self):   	    # Aktuellen Spieler zurückgeben
         return self.players[self.current_turn] if self.players else None
@@ -48,6 +49,7 @@ class SkyjoGame:
     def deal_initial_cards(self):
         for player in self.players:
             player.hand = self.draw_cards(12)
+        self.discard_pile.append(self.deck.pop())
 
     def draw_cards(self, amount):
         return [self.deck.pop() for _ in range(amount) if self.deck]
@@ -103,5 +105,6 @@ class SkyjoGame:
                 player.set_card(2, i, None)
 
     def check_for_end(self, player: Player):
-        if player.all_cards_revealed:
+        if player.all_cards_revealed():
             return True
+        return False
