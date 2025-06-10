@@ -3,6 +3,7 @@ from tkinter import simpledialog
 from PIL import Image, ImageTk
 from Server_Client import NetworkClient
 import os
+import random
 
 PORT = 65435
 
@@ -85,7 +86,9 @@ class GameGUI:
         if not self.player or self.player.revealed[row][col]:
             return
         self.player.revealed[row][col] = True
-        self.network.send("reveal_card", {"row": row, "col": col})
+        card_value = random.randint(-2, 12)
+        self.player.grid[row][col] = card_value
+        self.network.send("reveal_card", {"row": row, "col": col, "value": card_value})
         self.update_gui()
 
     def prompt_player_name(self):
@@ -123,7 +126,9 @@ class GameGUI:
         elif msg_type == "reveal_result":
             pos = data.get("data", {})
             r, c = pos.get("row"), pos.get("col")
-            if r is not None and c is not None:
+            value = pos.get("value")
+            if r is not None and c is not None and value is not None:
+                self.player.grid[r][c] = value
                 self.player.revealed[r][c] = True
         elif msg_type == "chat":
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
