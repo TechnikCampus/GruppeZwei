@@ -7,7 +7,6 @@ from class_player import Player
 # ==== Konfiguration & Spielstatus ====
 PORT = 65435
 
-
 class NetworkClient:
     def __init__(self, server_ip, server_port, on_message, on_connected=None):
         self.server_ip = server_ip
@@ -59,7 +58,6 @@ class NetworkClient:
                 print(f"[ERROR] Empfangsfehler: {e}")
                 break
 
-
 spielerdaten = {}
 letzte_aktion = {}
 spiel_lock = threading.Lock()
@@ -70,11 +68,9 @@ config = {
     "anzahl_runden": 1
 }
 
-
 # ==== Netzwerkfunktionen ====
 def karten_ziehen(anzahl):
     return SkyjoSpiel.draw_cards(anzahl)
-
 
 def broadcast(message, exclude=None):
     raw = json.dumps(message).encode("utf-8") + b"\n"
@@ -86,7 +82,6 @@ def broadcast(message, exclude=None):
                 daten["conn"].sendall(raw)
             except:
                 continue
-
 
 # ==== Spiellogik ====
 def spiel_starten():
@@ -129,7 +124,6 @@ def spiel_starten():
             "player": SkyjoSpiel.get_current_player().id
         })
 
-
 # ==== Server-Thread pro Client ====
 def client_thread(conn, sid):
     print(f"[SERVER] Spieler {sid} verbunden.")
@@ -167,15 +161,16 @@ def client_thread(conn, sid):
                             print(f"[SERVER] Spieler {sid} hat in diesem Zug bereits eine Karte aufgedeckt.")
                             continue
 
-                        index = data["index"]
-                        i = index // 4
-                        j = index % 4
+                        row = data.get("row", 0)
+                        col = data.get("col", 0)
+                        value = data.get("value", 0)
 
                         spieler = spielerdaten[sid]["spieler"]
 
-                        if not spieler.is_card_revealed(i, j):
-                            wert = spieler.reveal_card(i, j)
-                            print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
+                        if not spieler.is_card_revealed(row, col):
+                            spieler.set_card(row, col, value)
+                            wert = spieler.reveal_card(row, col)
+                            print(f"[SERVER] Spieler {sid} deckt Karte {row},{col} = {wert} auf")
 
                             # Merke: Spieler hat in diesem Zug bereits gehandelt
                             letzte_aktion[str(sid)] = True
@@ -184,8 +179,7 @@ def client_thread(conn, sid):
                             # Nachricht an alle Clients
                             broadcast({
                                 "type": "reveal_result",
-                                "index": i * 4 + j,
-                                "value": wert,
+                                "data": {"row": row, "col": col, "value": wert},
                                 "player": sid
                             })
 
@@ -229,6 +223,30 @@ def client_thread(conn, sid):
                                 "deck_count": len(SkyjoSpiel.deck)
                             })
 
+                    elif typ == "discard_card":
+                        card_value = data.get("value")
+                        SkyjoSpiel.discard_pile.append(card_value)
+                        broadcast({
+                            "type": "discard_update",
+                            "discard_pile": SkyjoSpiel.discard_pile
+                        })
+
+                    elif typ == "swap_card":
+                        row = data.get("row", 0)
+                        col = data.get("col", 0)
+                        value = data.get("value", 0)
+                        spieler = spielerdaten[sid]["spieler"]
+                        discard_card = SkyjoSpiel.discard_pile.pop()
+                        SkyjoSpiel.discard_pile.append(spieler.grid[row][col])
+                        spieler.set_card(row, col, discard_card)
+                        broadcast({
+                            "type": "swap_result",
+                            "row": row,
+                            "col": col,
+                            "value": discard_card,
+                            "discard_pile": SkyjoSpiel.discard_pile
+                        })
+
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
     except:
@@ -238,7 +256,6 @@ def client_thread(conn, sid):
             if sid in spielerdaten:
                 del spielerdaten[sid]
         conn.close()
-
 
 # ==== Haupt-Serverfunktion ====
 def server_starten(konfig):

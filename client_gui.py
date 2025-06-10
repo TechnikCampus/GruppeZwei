@@ -56,11 +56,12 @@ class GameGUI:
     def build_gui(self):
         self.deck_image = tk.Label(self.root, image=self.kartenbilder.get("back"))
         self.deck_image.grid(row=0, column=5, padx=10, pady=10)
+        self.deck_image.bind("<Button-1>", self.update_deck)
         tk.Label(self.root, text="Zugstapel").grid(row=1, column=5)
 
         self.discard_image = tk.Label(self.root, image=self.kartenbilder.get("back"))
         self.discard_image.grid(row=2, column=5, padx=10, pady=10)
-        self.discard_image.bind("<Button-1>", self.handle_discard_click)
+        self.discard_image.bind("<Button-3>", self.change_discard_pile)
         tk.Label(self.root, text="Ablagestapel").grid(row=3, column=5)
 
         for i in range(3):
@@ -69,7 +70,7 @@ class GameGUI:
                 lbl.grid(row=i, column=j, padx=5, pady=5)
                 btn = tk.Button(lbl, text="Flip", bg="gray", command=lambda r=i, c=j: self.karte_aufdecken(r, c))
                 btn.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-                lbl.bind("<Button-3>", lambda e, r=i, c=j: self.handle_card_swap(r, c))
+                btn.bind("<Button-1>", lambda e, r=i, c=j: self.tausche_karte(r, c))
                 self.card_labels[i][j] = lbl
 
         self.timer_label.grid(row=3, column=0, columnspan=2)
@@ -84,31 +85,39 @@ class GameGUI:
         self.root.bind("<Return>", lambda e: self.send_chat_message())
         self.root.bind("<Escape>", lambda e: self.root.quit())
 
+    def update_deck(self, event):
+        if not self.player:
+            return
+        card_value = random.randint(-2, 12)
+        self.player.hand.append(card_value)
+        self.network.send("draw_card", {"value": card_value})
+        self.update_gui()
+
     def karte_aufdecken(self, row, col):
-        if not self.player or self.player.revealed[row][col] or self.current_player != self.player.id:
+        if not self.player or self.player.revealed[row][col]:
             return
         self.player.revealed[row][col] = True
         card_value = random.randint(-2, 12)
         self.player.grid[row][col] = card_value
-        self.network.send("reveal_card", {"index": row * 4 + col})
+        self.network.send("reveal_card", {"row": row, "col": col, "value": card_value})
         self.update_gui()
 
-    def handle_discard_click(self, event):
-        if self.current_player != self.player.id:
+    def change_discard_pile(self, event):
+        if not self.player:
             return
-        discard_card = self.player.hand.pop() if self.player.hand else None
-        if discard_card is not None:
-            self.network.send("draw_card", {"card": discard_card})
-            self.update_gui()
+        card_value = random.randint(-2, 12)
+        self.player.hand.append(card_value)
+        self.network.send("discard_card", {"value": card_value})
+        self.update_gui()
 
-    def handle_card_swap(self, row, col):
-        if not self.player or not self.player.revealed[row][col] or self.current_player != self.player.id:
+    def tausche_karte(self, row, col):
+        if not self.player or not self.player.revealed[row][col]:
             return
-        discard_card = self.player.hand.pop() if self.player.hand else None
-        if discard_card is not None:
-            self.player.grid[row][col] = discard_card
-            self.network.send("swap_card", {"index": row * 4 + col, "value": discard_card})
-            self.update_gui()
+        discard_card = self.player.hand.pop()
+        self.player.hand.append(self.player.grid[row][col])
+        self.player.grid[row][col] = discard_card
+        self.network.send("swap_card", {"row": row, "col": col, "value": discard_card})
+        self.update_gui()
 
     def prompt_player_name(self):
         name = None
@@ -143,22 +152,16 @@ class GameGUI:
                 self.player.hand.append(card)
                 self.display_chat("System", f"Du hast gezogen: {card}")
         elif msg_type == "reveal_result":
-            index = data.get("index")
-            row = index // 4
-            col = index % 4
-            value = data.get("value")
-            self.player.grid[row][col] = value
-            self.player.revealed[row][col] = True
-        elif msg_type == "swap_card":
-            index = data.get("index")
-            row = index // 4
-            col = index % 4
-            value = data.get("value")
-            self.player.grid[row][col] = value
+            pos = data.get("data", {})
+            r, c = pos.get("row"), pos.get("col")
+            value = pos.get("value")
+            if r is not None and c is not None and value is not None:
+                self.player.grid[r][c] = value
+                self.player.revealed[r][c] = True
         elif msg_type == "chat":
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
-        elif msg_type == "turn":
-            self.current_player = data.get("player")
+        elif msg_type == "game_state":
+            self.current_player = data.get("current_player")
         self.update_gui()
 
     def update_gui(self):
