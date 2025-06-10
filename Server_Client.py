@@ -8,7 +8,7 @@ from class_player import Player
 PORT = 65435
 
 
-class NetworkClient:                                                            #Anmerkung: Klasse als eigene Datei machen
+class NetworkClient:
     def __init__(self, server_ip, server_port, on_message, on_connected=None):
         self.server_ip = server_ip
         self.server_port = server_port
@@ -167,7 +167,7 @@ def client_thread(conn, sid):
                             print(f"[SERVER] Spieler {sid} hat in diesem Zug bereits eine Karte aufgedeckt.")
                             continue
 
-                        index = data["data"].get("index", 0)
+                        index = data["index"]
                         i = index // 4
                         j = index % 4
 
@@ -184,7 +184,8 @@ def client_thread(conn, sid):
                             # Nachricht an alle Clients
                             broadcast({
                                 "type": "reveal_result",
-                                "data": {"index": i * 4 + j},
+                                "index": i * 4 + j,
+                                "value": wert,
                                 "player": sid
                             })
 

@@ -60,6 +60,7 @@ class GameGUI:
 
         self.discard_image = tk.Label(self.root, image=self.kartenbilder.get("back"))
         self.discard_image.grid(row=2, column=5, padx=10, pady=10)
+        self.discard_image.bind("<Button-1>", self.handle_discard_click)
         tk.Label(self.root, text="Ablagestapel").grid(row=3, column=5)
 
         for i in range(3):
@@ -83,13 +84,21 @@ class GameGUI:
         self.root.bind("<Escape>", lambda e: self.root.quit())
 
     def karte_aufdecken(self, row, col):
-        if not self.player or self.player.revealed[row][col]:
+        if not self.player or self.player.revealed[row][col] or self.current_player != self.player.id:
             return
         self.player.revealed[row][col] = True
         card_value = random.randint(-2, 12)
         self.player.grid[row][col] = card_value
-        self.network.send("reveal_card", {"row": row, "col": col, "value": card_value})
+        self.network.send("reveal_card", {"index": row * 4 + col})
         self.update_gui()
+
+    def handle_discard_click(self, event):
+        if self.current_player != self.player.id:
+            return
+        discard_card = self.player.hand.pop() if self.player.hand else None
+        if discard_card is not None:
+            self.network.send("draw_card", {"card": discard_card})
+            self.update_gui()
 
     def prompt_player_name(self):
         name = None
@@ -124,16 +133,16 @@ class GameGUI:
                 self.player.hand.append(card)
                 self.display_chat("System", f"Du hast gezogen: {card}")
         elif msg_type == "reveal_result":
-            pos = data.get("data", {})
-            r, c = pos.get("row"), pos.get("col")
-            value = pos.get("value")
-            if r is not None and c is not None and value is not None:
-                self.player.grid[r][c] = value
-                self.player.revealed[r][c] = True
+            index = data.get("index")
+            row = index // 4
+            col = index % 4
+            value = data.get("value")
+            self.player.grid[row][col] = value
+            self.player.revealed[row][col] = True
         elif msg_type == "chat":
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
-        elif msg_type == "game_state":
-            self.current_player = data.get("current_player")
+        elif msg_type == "turn":
+            self.current_player = data.get("player")
         self.update_gui()
 
     def update_gui(self):
