@@ -4,7 +4,6 @@ from Server_Client import NetworkClient
 
 PORT = 65435
 
-# test
 
 class GameGUI:
     def __init__(self, root, server_ip, server_port):
@@ -181,7 +180,7 @@ class GameGUI:
             self.status_label.config(text="Nicht dein Zug!")                                #Anmerkung: ist bestimmt eleganter zu lösen!
             print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
-        
+
         self.network.send("deck_draw_card")
 
         # self.discard_pile.append(self.deck.pop(0))
