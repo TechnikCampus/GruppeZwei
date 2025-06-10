@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import simpledialog
 from PIL import Image, ImageTk
 from Server_Client import NetworkClient
+import os
 
 PORT = 65435
 
@@ -12,26 +13,22 @@ class GameGUI:
         self.root.geometry("800x600")
         self.root.resizable(False, False)
 
-        # Spielhintergrund
         try:
-            bg = ImageTk.PhotoImage(Image.open("Spielhintergrund.png"))
+            bg = ImageTk.PhotoImage(Image.open("karten/Spielhintergrund.png"))
             label_bg = tk.Label(self.root, image=bg)
             label_bg.image = bg
             label_bg.place(relwidth=1, relheight=1)
-            label_bg.lower()  # ganz nach unten
+            label_bg.lower()
         except Exception as e:
             print(f"[WARN] Spielhintergrund.png konnte nicht geladen werden: {e}")
 
         self.network = NetworkClient(server_ip, server_port, self.handle_server_message)
-
         self.player = None
         self.current_player = None
 
-        # Kartenbilder laden
         self.kartenbilder = self.lade_kartenbilder("karten")
         self.card_labels = [[None for _ in range(4)] for _ in range(3)]
 
-        # Chat & Status
         self.chat_entry = tk.Entry(root, width=40)
         self.chat_button = tk.Button(root, text="Senden", command=self.send_chat_message)
         self.chat_display = tk.Text(root, height=10, width=60, state=tk.DISABLED)
@@ -44,11 +41,9 @@ class GameGUI:
         self.root.after(100, self.connect_to_server)
 
     def lade_kartenbilder(self, pfad):
-        from PIL import Image
-        import os
         bilder = {}
         for datei in os.listdir(pfad):
-            if datei.endswith(".png"):
+            if datei.endswith(".png") and "card_" in datei:
                 key = datei.replace("card_", "").replace(".png", "")
                 try:
                     img = Image.open(os.path.join(pfad, datei)).resize((60, 90))
@@ -58,7 +53,6 @@ class GameGUI:
         return bilder
 
     def build_gui(self):
-        # Deck- und Ablagestapel
         self.deck_image = tk.Label(self.root, image=self.kartenbilder.get("back"))
         self.deck_image.grid(row=0, column=5, padx=10, pady=10)
         tk.Label(self.root, text="Zugstapel").grid(row=1, column=5)
@@ -67,18 +61,16 @@ class GameGUI:
         self.discard_image.grid(row=2, column=5, padx=10, pady=10)
         tk.Label(self.root, text="Ablagestapel").grid(row=3, column=5)
 
-        # Spielfeld
         for i in range(3):
             for j in range(4):
                 lbl = tk.Label(self.root, image=self.kartenbilder.get("back"), relief=tk.RAISED, borderwidth=2)
                 lbl.grid(row=i, column=j, padx=5, pady=5)
+                lbl.bind("<Button-1>", lambda e, r=i, c=j: self.karte_aufdecken(r, c))
                 self.card_labels[i][j] = lbl
 
-        # Timer & Status
         self.timer_label.grid(row=3, column=0, columnspan=2)
         self.status_label.grid(row=3, column=2, columnspan=2)
 
-        # Chat
         chat_frame = tk.Frame(self.root)
         chat_frame.grid(row=4, column=0, columnspan=4, pady=10)
         self.chat_display.pack(in_=chat_frame)
@@ -87,6 +79,12 @@ class GameGUI:
 
         self.root.bind("<Return>", lambda e: self.send_chat_message())
         self.root.bind("<Escape>", lambda e: self.root.quit())
+
+    def karte_aufdecken(self, row, col):
+        if not self.player or self.player.revealed[row][col]:
+            return
+        self.player.revealed[row][col] = True
+        self.update_gui()
 
     def prompt_player_name(self):
         name = None
@@ -132,7 +130,6 @@ class GameGUI:
         self.update_gui()
 
     def update_gui(self):
-        # Karten aktualisieren
         for i in range(3):
             for j in range(4):
                 if self.player.revealed[i][j]:
@@ -144,7 +141,6 @@ class GameGUI:
                 lbl.config(image=img)
                 lbl.image = img
 
-        # Stapel
         self.deck_image.config(image=self.kartenbilder["back"])
         self.discard_image.config(
             image=self.kartenbilder.get(
@@ -153,7 +149,6 @@ class GameGUI:
             )
         )
 
-        # Status & Timer
         if self.current_player == self.player.id:
             self.status_label.config(text="Du bist am Zug")
             self.start_timer()
