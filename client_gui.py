@@ -129,20 +129,22 @@ class GameGUI:
             if card is not None:
                 self.player.hand.append(card)
                 self.display_chat("System", f"Du hast eine Karte gezogen: {card}")
+
         elif msg_type == "game_state":
             self.display_chat("System", data.get("info", "Spielstatus empfangen."))
+
         elif msg_type == "reveal_result":
             pos = data.get("data", {})
             row, col = pos.get("row"), pos.get("col")
             if row is not None and col is not None:
                 self.player.revealed[row][col] = True
                 self.player.grid[row][col] = "X"
+
         elif msg_type == "chat":
             sender = data.get("sender", "?")
             text = data.get("text", "")
             self.display_chat(sender, text)
-
-        self.update_gui()
+            self.update_gui()
 
         elif msg_type == "deck_update":                                                     # Fragt die Anzahl der Karten im Stappel ab  #Anmerkung: wahrscheinlich redundant
             deck_count = data.get("deck_count", "?")
@@ -154,14 +156,14 @@ class GameGUI:
             self.discard_pile_top = data.get("card", "?")
             self.update_gui()
 
-    def update_gui(self): 
-        deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
+    def update_gui(self):
+        deck_button, discard_pile_button = self.piles
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
+
+        # Kartenwerte als Text auf den Buttons anzeigen und Buttons aktivieren/deaktivieren
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
             btn.config(text=val)
-
-            # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
             if self.is_my_turn and not self.revealed[i]:
                 btn.config(state=tk.NORMAL)
             else:
@@ -170,7 +172,11 @@ class GameGUI:
         if self.is_my_turn:
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
-    def update_gui(self):
+        else:
+            deck_button.config(state=tk.DISABLED)
+            discard_pile_button.config(state=tk.DISABLED)
+
+        # Kartenbilder aktualisieren
         for i in range(3):
             for j in range(4):
                 val = self.player.grid[i][j]
@@ -182,20 +188,19 @@ class GameGUI:
                 self.card_labels[i][j].config(image=bild)
                 self.card_labels[i][j].image = bild  # Referenz halten
 
-
         # Deck immer rückseitig anzeigen
         if 'back' in self.kartenbilder:
             self.deck_image.config(image=self.kartenbilder['back'])
             self.deck_image.image = self.kartenbilder['back']
 
         # Ablagestapel: oberste Karte anzeigen, wenn vorhanden
-        top_discard = self.player.hand[-1] if self.player.hand else None
-        if top_discard is not None:
-            bild_key = str(top_discard)
+        if hasattr(self, "discard_pile_top") and self.discard_pile_top is not None:
+            bild_key = str(self.discard_pile_top)
             bild = self.kartenbilder.get(bild_key, self.kartenbilder.get("back"))
             self.discard_image.config(image=bild)
             self.discard_image.image = bild
 
+        # Status und Timer
         if self.current_player == self.player.id:
             self.status_label.config(text="Du bist am Zug")
             self.start_timer()
@@ -220,6 +225,7 @@ class GameGUI:
 
     def discard_pile_draw(self):
         pass
+
     def start_timer(self, duration=30):
         self.timer_active = True
 
