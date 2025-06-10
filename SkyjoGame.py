@@ -83,12 +83,6 @@ class SkyjoGame:
     def wait_for_communication(self):
         pass
 
-    def wait_for_host_information(self):
-        pass
-
-    def transfer_player_information(self):
-        pass
-
     def sort_players(self):
         n = len(self.players)
         for i in range(n):
