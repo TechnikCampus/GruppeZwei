@@ -65,7 +65,8 @@ class GameGUI:
             for j in range(4):
                 lbl = tk.Label(self.root, image=self.kartenbilder.get("back"), relief=tk.RAISED, borderwidth=2)
                 lbl.grid(row=i, column=j, padx=5, pady=5)
-                lbl.bind("<Button-1>", lambda e, r=i, c=j: self.karte_aufdecken(r, c))
+                btn = tk.Button(lbl, text="Flip", bg="gray", command=lambda r=i, c=j: self.karte_aufdecken(r, c))
+                btn.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                 self.card_labels[i][j] = lbl
 
         self.timer_label.grid(row=3, column=0, columnspan=2)
@@ -84,6 +85,7 @@ class GameGUI:
         if not self.player or self.player.revealed[row][col]:
             return
         self.player.revealed[row][col] = True
+        self.network.send("reveal_card", {"row": row, "col": col})
         self.update_gui()
 
     def prompt_player_name(self):
