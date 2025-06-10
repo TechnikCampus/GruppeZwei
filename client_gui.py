@@ -1,167 +1,155 @@
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import messagebox, simpledialog
+from PIL import Image, ImageTk
+import os
 from Server_Client import NetworkClient
-
-PORT = 65435
-
-# test
+from class_player import Player
+import threading
+import time
 
 class GameGUI:
-    def __init__(self, root, server_ip, server_port):
+    def __init__(self, root, server_ip="127.0.0.1", server_port=65433):
         self.root = root
         self.root.title("Skyjo Client")
+        self.network = NetworkClient(server_ip, server_port, self.handle_server_message)
 
-        self.player_id = None                                       # vom Server zu geteilte ID
-        self.hand = ["?"] * 12                                      # Kartendeck des einzelnen
-        self.revealed = [False] * 12                                # Liste der umgedrehten Karten
-        self.is_my_turn = False                                     # Abfrage: bin ich am Zug?
-        self.discard_pile = []
-        self.discard_pile_top = "?"
+        self.player = None
+        self.current_player = None
 
-        self.card_buttons = []                                      # liste aller Tkinter Buttons
-        self.piles = []
-        self.chat_entry = tk.Entry(self.root, width=40)                  # initialisiert Eingabefeld für Chat
-        self.chat_button = tk.Button(self.root, text="Senden", command=self.send_chat_message)   # Senden Button für Chat
-        self.chat_display = tk.Text(self.root, height=10, width=60, state=tk.DISABLED)           # Textfeld für Chatnachrichten
-        self.status_label = tk.Label(self.root, text="Status")                                   # Verbindungsstatus
-        self.deck_label = tk.Label(self.root, text="Stapel: ? Karten")                      # Zeigt Anzahl Karten im Deck
-        self.deck_label.grid(row=6, column=0, columnspan=2)                                 # Plaziert Label im Grid
+        self.kartenbilder = self.lade_kartenbilder("karten")
+        self.card_labels = [[None for _ in range(4)] for _ in range(3)]
+        self.chat_entry = tk.Entry(root, width=40)
+        self.chat_button = tk.Button(root, text="Senden", command=self.send_chat_message)
+        self.chat_display = tk.Text(root, height=10, width=60, state=tk.DISABLED)
+        self.status_label = tk.Label(root, text="Status")
+        self.timer_label = tk.Label(root, text="Zug-Timer: -")
+        self.timer_active = False
+
         self.build_gui()
+        self.prompt_player_name()
+        self.root.after(100, self.connect_to_server)
 
-        self.prompt_player_name()                                                           # Spielernamenabfrage
-        self.network = NetworkClient(server_ip, server_port, self.handle_server_message, self.on_connected) # erstellt den Client für die Kommunikation
-        self.root.after(100, self.connect_to_server)                                        # Startet Verbindung zum Server nach 100ms
+    def lade_kartenbilder(self, pfad):
+        bilder = {}
+        for datei in os.listdir(pfad):
+            if datei.endswith(".png"):
+                key = datei.replace("card_", "").replace(".png", "")
+                try:
+                    image = Image.open(os.path.join(pfad, datei)).resize((60, 90))
+                    bilder[key] = ImageTk.PhotoImage(image)
+                except Exception as e:
+                    print(f"Fehler beim Laden von {datei}: {e}")
+        return bilder
 
     def build_gui(self):
-        for i in range(3):                                                                  # Zeilen
-            for j in range(4):                                                              # Spalten
-                idx = i * 4 + j                                                             # Indexberechnung
-                btn = tk.Button(self.root, text="?", width=6, state=tk.DISABLED,            # Erstellt Karte als Button mit "?"
-                                command=lambda idx=idx: self.reveal_card(idx))
-                btn.grid(row=i, column=j, padx=5, pady=5)                                   # Platziert Button im Grid
-                self.card_buttons.append(btn)                                               # Fügt aktuellen Button der Liste hinzu
 
-        deck_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
-        deck_button.grid(row=1, column=5, padx=5, pady=5)                                # Platziert Button im Grid
-        self.piles.append(deck_button)
+        # Deck- und Ablagestapel hinzufügen
+        self.deck_image = tk.Label(self.root, image=self.kartenbilder.get("back"))
+        self.deck_image.grid(row=0, column=5, padx=10, pady=10)
+        self.deck_label = tk.Label(self.root, text="Zugstapel")
+        self.deck_label.grid(row=1, column=5)
 
-        discard_pile_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.discard_pile_draw)      # Platziert Label des Kartenstappel im Grid
-        discard_pile_button.grid(row=2, column=5, padx=5, pady=5)
-        self.piles.append(discard_pile_button)
+        self.discard_image = tk.Label(self.root, image=self.kartenbilder.get("back"))
+        self.discard_image.grid(row=2, column=5, padx=10, pady=10)
+        self.discard_label = tk.Label(self.root, text="Ablagestapel")
+        self.discard_label.grid(row=3, column=5)
 
-        self.status_label.grid(row=3, column=0, columnspan=4)                               # Platziert Status Label im Grid
-        self.chat_display.grid(row=4, column=0, columnspan=4)                               # Platziert Chat im Grid
-        self.chat_entry.grid(row=5, column=0, columnspan=3)                                 # Platziert Eingabefeld im Grid
-        self.chat_button.grid(row=5, column=3)                                              # Platziert Sende-Button im Grid
+        for i in range(3):
+            for j in range(4):
+                lbl = tk.Label(self.root, image=self.kartenbilder.get("back", None), relief=tk.RAISED, borderwidth=2)
+                lbl.grid(row=i, column=j, padx=5, pady=5)
+                self.card_labels[i][j] = lbl
 
-    def prompt_player_name(self):                                                           # Fragt den Spieler nach seinem Namen
+        self.timer_label.grid(row=3, column=0, columnspan=2)
+        self.status_label.grid(row=3, column=2, columnspan=2)
+
+        chat_frame = tk.Frame(self.root)
+        chat_frame.grid(row=4, column=0, columnspan=4)
+        self.chat_display.pack(in_=chat_frame)
+        self.chat_entry.pack(in_=chat_frame, side=tk.LEFT)
+        self.chat_button.pack(in_=chat_frame, side=tk.RIGHT)
+
+        self.root.bind("<Return>", lambda e: self.send_chat_message())
+        self.root.bind("<Escape>", lambda e: self.root.quit())
+
+    def prompt_player_name(self):
         name = None
         while not name:
             name = simpledialog.askstring("Spielername", "Gib deinen Spielernamen ein:")
-        self.player_id = str(name)                                                          #Anmerkung: Name wird als ID gespeichert, am besten noch ändern aufgrund von leserlichkeit
-        print(f"[DEBUG] Spielername gesetzt: {self.player_id}")
+        self.player = Player(name)
+        self.root.title(f"Skyjo – {self.player.id}")
 
-    def connect_to_server(self):                                                            # Baut Verbindung zum Server, wenn nicht dann Fehlermeldung
+    def connect_to_server(self):
         connected = self.network.connect()
-        if not connected:
+        if connected:
+            self.network.send("join", {"name": self.player.id})
+        else:
             self.status_label.config(text="Verbindung fehlgeschlagen")
 
-    def on_connected(self):                                                                 # Gibt dem Server den Name ds Spielers
-        self.status_label.config(text="Verbunden mit Server")
-        print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")                     #Anmerkung: Name wird als ID gespeichert, Ändern!
-        self.network.send("join", {"name": self.player_id})
-
-    def send_chat_message(self):                                                            # Wird beim Senden-Button ausgefuerht
-        text = self.chat_entry.get().strip()                                                # holt den Text aus dem Eingabefeld und entfernt unnoetige Zeichen
+    def send_chat_message(self):
+        text = self.chat_entry.get().strip()
         if text:
-            self.network.send("chat", {"text": text, "sender": self.player_id})             #Anmerkung: Name wird als ID gespeichert, Ändern! # Sendet Nachricht an den Server
-            self.chat_entry.delete(0, tk.END)                                               # loescht Nachricht nach dem Senden
+            self.network.send("chat", {"text": text, "sender": self.player.id})
+            self.chat_entry.delete(0, tk.END)
 
-    def reveal_card(self, idx):
-        if not self.is_my_turn:                                                             # Abfrage ob Spieler dran ist
-            self.status_label.config(text="Nicht dein Zug!")                                #Anmerkung: ist bestimmt eleganter zu lösen!
-            print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
-            return
-
-        if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
-            print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
-            return
-
-        print(f"[DEBUG] Aufdecken von Karte {idx}")                                         # Falls beide Abfragen nein sind, wir die Karte aufgedeckt und an den Server weitergeleitet
-        self.revealed[idx] = True
-        self.update_gui()
-        self.network.send("reveal_card", {"data": {"index": idx}})
-
-    def handle_server_message(self, message):                                               # Methode zum Empfangen vom Server
-        msg_type = message.get("type")                                                      # speichert Typ und Daten der Nachricht ab
+    def handle_server_message(self, message):
+        msg_type = message.get("type")
         data = message.get("data", message)
 
-        print(f"[DEBUG] Nachricht vom Server: {msg_type} – {data}")
-
-        if msg_type == "start":                                                             # Wenn Start empfangen wurde dann werden die Daten für den jeweiligen Spieler gespeichert
-            self.hand = data.get("hand", self.hand)
-            self.player_id = str(data.get("player_id"))
-            self.status_label.config(text="Spiel gestartet")
-            self.discard_pile = data.get("discard_pile", "?")
-            if self.discard_pile:
-                self.discard_pile_top = self.discard_pile[-1]
-            else:
-                self.discard_pile_top = "?"
-            self.update_gui()
-
-        elif msg_type == "chat":                                                            # Wenn Chat empfangen wurde dann wird die Nachricht und der Text geprintet
-            self.display_chat(data.get("sender", "?"), data.get("text", ""))
-
-        elif msg_type == "reveal_result":                                                   # Wenn eine Karte umgedreht wurde wird sich  der entsprechende Index geholt und geprüft ob idx ein gültiger Wert ist
-            idx = data.get("data", {}).get("index")                                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist 
-            player = message.get("player")
-            if idx is not None:
-                self.revealed[idx] = True
-                print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
-            self.update_gui()
-
-        elif msg_type == "card_drawn":                                                      # Wenn neue Karte gezogem wird dann wird diese Karte der Hand übergeben
+        if msg_type == "start":
+            self.player.hand = data.get("hand", [])
+            self.display_chat("System", f"Spieler {data.get('player_id')} verbunden.")
+        elif msg_type == "card_drawn":
             card = data.get("card")
             if card is not None:
-                self.hand.append(card)
-            self.update_gui()
+                self.player.hand.append(card)
+                self.display_chat("System", f"Du hast eine Karte gezogen: {card}")
+        elif msg_type == "game_state":
+            self.display_chat("System", data.get("info", "Spielstatus empfangen."))
+        elif msg_type == "reveal_result":
+            pos = data.get("data", {})
+            row, col = pos.get("row"), pos.get("col")
+            if row is not None and col is not None:
+                self.player.revealed[row][col] = True
+                self.player.grid[row][col] = "X"
+        elif msg_type == "chat":
+            sender = data.get("sender", "?")
+            text = data.get("text", "")
+            self.display_chat(sender, text)
 
-        elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert 
-            current = data.get("player")
-            print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
-            self.is_my_turn = (str(current) == str(self.player_id))
-            print(f"[DEBUG] Bin ich dran? {self.is_my_turn}")
-            if self.is_my_turn:
-                self.status_label.config(text="Du bist am Zug!")
-            else:
-                self.status_label.config(text=f"{data.get("name", "?")} ist am Zug")
-            self.update_gui()
+        self.update_gui()
 
-        elif msg_type == "deck_update":                                                     # Fragt die Anzahl der Karten im Stappel ab  #Anmerkung: wahrscheinlich redundant
-            deck_count = data.get("deck_count", "?")
-            self.deck_label.config(text=f"Stapel: {deck_count} Karten")
+    def update_gui(self):
+        for i in range(3):
+            for j in range(4):
+                val = self.player.grid[i][j]
+                if self.player.revealed[i][j] and val is not None:
+                    bild_key = str(val)
+                else:
+                    bild_key = "back"
+                bild = self.kartenbilder.get(bild_key, self.kartenbilder.get("back"))
+                self.card_labels[i][j].config(image=bild)
+                self.card_labels[i][j].image = bild  # Referenz halten
 
-    def update_gui(self): 
-        deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
-        print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
-        for i, btn in enumerate(self.card_buttons):
-            val = self.hand[i] if self.revealed[i] else "?"
-            btn.config(text=val)
 
-            # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
-            if self.is_my_turn and not self.revealed[i]:
-                btn.config(state=tk.NORMAL)
-            else:
-                btn.config(state=tk.DISABLED)
+        # Deck immer rückseitig anzeigen
+        if 'back' in self.kartenbilder:
+            self.deck_image.config(image=self.kartenbilder['back'])
+            self.deck_image.image = self.kartenbilder['back']
 
-        if self.is_my_turn:
-            deck_button.config(state=tk.NORMAL)
-            discard_pile_button.config(state=tk.NORMAL)
+        # Ablagestapel: oberste Karte anzeigen, wenn vorhanden
+        top_discard = self.player.hand[-1] if self.player.hand else None
+        if top_discard is not None:
+            bild_key = str(top_discard)
+            bild = self.kartenbilder.get(bild_key, self.kartenbilder.get("back"))
+            self.discard_image.config(image=bild)
+            self.discard_image.image = bild
+
+        if self.current_player == self.player.id:
+            self.status_label.config(text="Du bist am Zug")
+            self.start_timer()
         else:
-            deck_button.config(state=tk.DISABLED)
-            discard_pile_button.config(state=tk.DISABLED)
-
-        discard_pile_button.config(text=str(self.discard_pile_top))
+            self.status_label.config(text=f"Warte auf {self.current_player}...")
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
@@ -169,8 +157,21 @@ class GameGUI:
         self.chat_display.config(state=tk.DISABLED)
         self.chat_display.see(tk.END)
 
-    def deck_draw_card(self):
-        pass
+    def start_timer(self, duration=30):
+        self.timer_active = True
 
-    def discard_pile_draw(self):
-        pass
+        def count():
+            for t in range(duration, 0, -1):
+                if not self.timer_active:
+                    break
+                self.timer_label.config(text=f"Zug-Timer: {t}s")
+                time.sleep(1)
+            if self.timer_active:
+                self.timer_label.config(text="Zeit abgelaufen!")
+
+        threading.Thread(target=count, daemon=True).start()
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = GameGUI(root)
+    root.mainloop()
