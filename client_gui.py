@@ -4,6 +4,7 @@ from Server_Client import NetworkClient
 
 PORT = 65435
 
+# test
 
 class GameGUI:
     def __init__(self, root, server_ip, server_port):
