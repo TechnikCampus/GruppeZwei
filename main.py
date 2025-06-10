@@ -7,11 +7,11 @@ from PIL import Image, ImageTk
 from Server_Client import server_starten, PORT
 from client_gui import GameGUI
 
+# Globale Konfiguration
 config = {
     "anzahl_spieler": 2,
     "anzahl_runden": 1
 }
-
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -23,7 +23,6 @@ def get_local_ip():
     finally:
         s.close()
     return IP
-
 
 def start_host():
     try:
@@ -46,7 +45,6 @@ def start_host():
     app = GameGUI(gui_root, "localhost", PORT)
     gui_root.mainloop()
 
-
 def start_client():
     ip = simpledialog.askstring("Client", "Gib die IP-Adresse des Hosts ein:")
     if ip:
@@ -55,20 +53,27 @@ def start_client():
         app = GameGUI(gui_root, ip, PORT)
         gui_root.mainloop()
 
-
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Skyjo starten")
     root.geometry("400x300")
+    root.resizable(False, False)
 
-    # Hintergrundbild
-    bg_image = ImageTk.PhotoImage(Image.open("Lobby.png"))
-    bg_label = tk.Label(root, image=bg_image)
-    bg_label.place(relwidth=1, relheight=1)
+    # Lobby-Hintergrund
+    try:
+        lobby_img = ImageTk.PhotoImage(Image.open("Lobby.png"))
+        bg_label = tk.Label(root, image=lobby_img)
+        bg_label.place(relwidth=1, relheight=1)
+        bg_label.lower()  # ganz nach unten
+    except Exception as e:
+        print(f"[WARN] Lobby.png konnte nicht geladen werden: {e}")
 
-    # GUI-Elemente
-    tk.Label(root, text="Wähle Modus", font=("Arial", 14), bg="#ffffff").pack(pady=20)
-    tk.Button(root, text="Host starten", width=20, command=start_host).pack(pady=10)
-    tk.Button(root, text="Client verbinden", width=20, command=start_client).pack(pady=10)
+    # Auswahl-Frame
+    frame = tk.Frame(root, bg="white")
+    frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+    tk.Label(frame, text="Wähle Modus", font=("Arial", 14), bg="white").pack(pady=10)
+    tk.Button(frame, text="Host starten", width=20, command=start_host).pack(pady=5)
+    tk.Button(frame, text="Client verbinden", width=20, command=start_client).pack(pady=5)
 
     root.mainloop()
