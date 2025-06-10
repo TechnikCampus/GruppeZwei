@@ -69,6 +69,7 @@ class GameGUI:
                 lbl.grid(row=i, column=j, padx=5, pady=5)
                 btn = tk.Button(lbl, text="Flip", bg="gray", command=lambda r=i, c=j: self.karte_aufdecken(r, c))
                 btn.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+                lbl.bind("<Button-3>", lambda e, r=i, c=j: self.handle_card_swap(r, c))
                 self.card_labels[i][j] = lbl
 
         self.timer_label.grid(row=3, column=0, columnspan=2)
@@ -98,6 +99,15 @@ class GameGUI:
         discard_card = self.player.hand.pop() if self.player.hand else None
         if discard_card is not None:
             self.network.send("draw_card", {"card": discard_card})
+            self.update_gui()
+
+    def handle_card_swap(self, row, col):
+        if not self.player or not self.player.revealed[row][col] or self.current_player != self.player.id:
+            return
+        discard_card = self.player.hand.pop() if self.player.hand else None
+        if discard_card is not None:
+            self.player.grid[row][col] = discard_card
+            self.network.send("swap_card", {"index": row * 4 + col, "value": discard_card})
             self.update_gui()
 
     def prompt_player_name(self):
@@ -139,6 +149,12 @@ class GameGUI:
             value = data.get("value")
             self.player.grid[row][col] = value
             self.player.revealed[row][col] = True
+        elif msg_type == "swap_card":
+            index = data.get("index")
+            row = index // 4
+            col = index % 4
+            value = data.get("value")
+            self.player.grid[row][col] = value
         elif msg_type == "chat":
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
         elif msg_type == "turn":
