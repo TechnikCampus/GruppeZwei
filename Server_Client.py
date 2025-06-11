@@ -212,6 +212,11 @@ def client_thread(conn, sid):
                         })
 
                     elif typ == "draw_card":
+                        current_player = SkyjoSpiel.get_current_player()
+                        if current_player is None or current_player.id != str(sid):
+                            print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
+                            continue
+
                         neue_karte = karten_ziehen(1)[0] if SkyjoSpiel.deck else None
                         if neue_karte:
                             spielerdaten[sid]["spieler"].hand.append(neue_karte)
@@ -225,6 +230,11 @@ def client_thread(conn, sid):
                             })
 
                     elif typ == "discard_card":
+                        current_player = SkyjoSpiel.get_current_player()
+                        if current_player is None or current_player.id != str(sid):
+                            print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
+                            continue
+
                         card_value = data.get("value")
                         SkyjoSpiel.discard_pile.append(card_value)
                         broadcast({
@@ -233,6 +243,11 @@ def client_thread(conn, sid):
                         })
 
                     elif typ == "swap_card":
+                        current_player = SkyjoSpiel.get_current_player()
+                        if current_player is None or current_player.id != str(sid):
+                            print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
+                            continue
+
                         row = data.get("row", 0)
                         col = data.get("col", 0)
                         value = data.get("value", 0)

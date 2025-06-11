@@ -92,6 +92,9 @@ class GameGUI:
     def karte_aufdecken(self, row, col):
         if not self.player or self.player.revealed[row][col]:
             return
+        if self.current_player != self.player.id:
+            print("[CLIENT] Du bist nicht am Zug.")
+            return
         self.player.revealed[row][col] = True
         card_value = random.randint(-2, 12)
         self.player.grid[row][col] = card_value

@@ -1,9 +1,8 @@
 import random
 from class_player import Player
 
-
 class SkyjoGame:
-    def __init__(self):             # initialisierung der SkyjoGame-Klasse
+    def __init__(self):             # Initialisierung der SkyjoGame-Klasse
         self.players = []
         self.max_players = 8    # Maximale Anzahl der Spieler
         self.min_players = 2    # Minimale Anzahl der Spieler
@@ -55,11 +54,9 @@ class SkyjoGame:
         return [self.deck.pop() for _ in range(amount) if self.deck]
 
     def player_draw_new_card(self, player: Player):
+        # Sicherstellen, dass nur der aktuelle Spieler eine neue Karte ziehen kann
         if self.started and player == self.get_current_player():
             if self.deck:
-                # card = self.deck.pop()
-                # player.hand.append(card)
-                # return card
                 self.discard_pile.append(self.deck.pop())
         return None
 
@@ -99,7 +96,6 @@ class SkyjoGame:
 
     def threeSome(self, player: Player):
         for i in range(4):
-
             if (
                 player.grid[0][i] == player.grid[1][i] and player.grid[0][i] == player.grid[2][i] and player.grid[0][i] is not None
             ):
