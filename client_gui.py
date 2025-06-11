@@ -1,9 +1,9 @@
 import tkinter as tk
+import random
 from tkinter import simpledialog
 from PIL import Image, ImageTk
 from Server_Client import NetworkClient
 import os
-import random
 
 PORT = 65435
 
@@ -26,6 +26,7 @@ class GameGUI:
         self.network = NetworkClient(server_ip, server_port, self.handle_server_message)
         self.player = None
         self.current_player = None
+        self.discard_pile = []  # Initialisiere das Ablagestapel-Attribut
 
         self.kartenbilder = self.lade_kartenbilder("karten")
         self.card_labels = [[None for _ in range(4)] for _ in range(3)]
@@ -86,12 +87,7 @@ class GameGUI:
         self.root.bind("<Escape>", lambda e: self.root.quit())
 
     def update_deck(self, event):
-        if not self.player:
-            return
-        card_value = random.randint(-2, 12)
-        self.player.hand.append(card_value)
-        self.network.send("draw_card", {"value": card_value})
-        self.update_gui()
+        self.network.send("draw_card")
 
     def karte_aufdecken(self, row, col):
         if not self.player or self.player.revealed[row][col]:
@@ -103,12 +99,7 @@ class GameGUI:
         self.update_gui()
 
     def change_discard_pile(self, event):
-        if not self.player:
-            return
-        card_value = random.randint(-2, 12)
-        self.player.hand.append(card_value)
-        self.network.send("discard_card", {"value": card_value})
-        self.update_gui()
+        self.network.send("discard_card", {"value": self.player.hand.pop()})
 
     def tausche_karte(self, row, col):
         if not self.player or not self.player.revealed[row][col]:
@@ -162,6 +153,16 @@ class GameGUI:
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
         elif msg_type == "game_state":
             self.current_player = data.get("current_player")
+        elif msg_type == "deck_update":
+            self.deck_count = data.get("deck_count")
+        elif msg_type == "discard_update":
+            self.discard_pile = data.get("discard_pile")
+        elif msg_type == "swap_result":
+            row = data.get("row")
+            col = data.get("col")
+            value = data.get("value")
+            self.player.grid[row][col] = value
+            self.discard_pile = data.get("discard_pile")
         self.update_gui()
 
     def update_gui(self):
@@ -179,7 +180,7 @@ class GameGUI:
         self.deck_image.config(image=self.kartenbilder["back"])
         self.discard_image.config(
             image=self.kartenbilder.get(
-                str(self.player.hand[-1]) if self.player.hand else "back",
+                str(self.discard_pile[-1]) if self.discard_pile else "back",
                 self.kartenbilder["back"]
             )
         )

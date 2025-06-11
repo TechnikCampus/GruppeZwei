@@ -106,7 +106,8 @@ def spiel_starten():
                 "type": "start",
                 "player_id": sid,
                 "hand": hand,
-                "discard_pile": SkyjoSpiel.discard_pile
+                "discard_pile": SkyjoSpiel.discard_pile,
+                "deck_count": len(SkyjoSpiel.deck)
             }).encode("utf-8") + b"\n")
         
         letzte_aktion = {str(sid): False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
