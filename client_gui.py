@@ -84,7 +84,7 @@ class GameGUI:
             print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
-        if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
+        # if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
             print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
             return
 
@@ -151,7 +151,14 @@ class GameGUI:
             self.update_gui()
             self.draw_count += 1
 
-    def update_gui(self): 
+        elif msg_type == "deck_swichted_card":
+            self.hand = data.get("hand", self.hand)
+            idx = data.get("index")
+            if idx is not None:
+                self.revealed[idx] = True
+            self.update_gui()
+
+    def update_gui(self):
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
@@ -159,7 +166,7 @@ class GameGUI:
             btn.config(text=val)
 
             # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
-            if self.is_my_turn and not self.revealed[i]:
+            if self.is_my_turn:
                 btn.config(state=tk.NORMAL)
             else:
                 btn.config(state=tk.DISABLED)
@@ -193,4 +200,4 @@ class GameGUI:
         # self.discard_pile.append(self.deck.pop(0))
 
     def discard_pile_draw(self):
-        pass
+        self.network.send("discard_pile_draw")

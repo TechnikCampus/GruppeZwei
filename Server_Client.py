@@ -6,6 +6,7 @@ from class_player import Player
 
 # ==== Konfiguration & Spielstatus ====
 PORT = 65435
+switching_cards = False
 
 
 class NetworkClient:                                                            #Anmerkung: Klasse als eigene Datei machen
@@ -129,6 +130,7 @@ def spiel_starten():
 
 # ==== Server-Thread pro Client ====
 def client_thread(conn, sid):
+    global switching_cards
     print(f"[SERVER] Spieler {sid} verbunden.")
 
     buffer = b""
@@ -151,7 +153,7 @@ def client_thread(conn, sid):
                         if len(spielerdaten) == config["anzahl_spieler"]:
                             threading.Thread(target=spiel_starten, daemon=True).start()
 
-                    elif typ == "reveal_card":
+                    elif (typ == "reveal_card"):
                         current_player = SkyjoSpiel.get_current_player()
                         print(f"[DEBUG] Aktueller Spieler laut Server: {current_player.id if current_player else 'None'} | Aktuell anfragender: {sid}")
                         print(f"[DEBUG] letzte_aktion vor Prüfung: {letzte_aktion}")
@@ -167,31 +169,64 @@ def client_thread(conn, sid):
                         index = data["data"].get("index", 0)
                         i = index // 4
                         j = index % 4
-
                         spieler = spielerdaten[sid]["spieler"]
 
-                        if not spieler.is_card_revealed(i, j):
-                            wert = spieler.reveal_card(i, j)
-                            print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
+                        if switching_cards:
+                            switching_cards = False
+                            temp = spieler.hand[index]
+                            spieler.hand[index] = SkyjoSpiel.discard_pile.pop()
+                            SkyjoSpiel.discard_pile.append(temp)
 
-                            # Merke: Spieler hat in diesem Zug bereits gehandelt
-                            letzte_aktion[str(sid)] = True
-                            print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion}")
-
-                            # Nachricht an alle Clients
                             broadcast({
-                                "type": "reveal_result",
-                                "data": {"index": i * 4 + j},
-                                "player": sid
+                                "type": "deck_drawn_card",
+                                "card": temp
                             })
 
-                            if SkyjoSpiel.check_for_end(spieler):
-                                print(f"[SERVER] Spieler {sid} hat alle Karten aufgedeckt – Spielende.")
+                            if not spieler.is_card_revealed(i, j):
+                                wert = spieler.reveal_card(i, j)
+
+                            conn.sendall(json.dumps({
+                                "type": "deck_swichted_card",
+                                "hand": spieler.hand,
+                                "index": index
+                            }).encode("utf-8") + b"\n")
+
+                            SkyjoSpiel.next_turn()
+                            next_id = SkyjoSpiel.get_current_player().id
+                            for k in letzte_aktion:
+                                letzte_aktion[k] = True
+                            letzte_aktion[str(next_id)] = False
+                            print(f"[DEBUG] letzte_aktion nach Spielerwechsel: {letzte_aktion}")
+                            broadcast({
+                                "type": "turn",
+                                "player": str(next_id),
+                                "name": spielerdaten[sid]["name"]
+                            })
+
+                        else:
+
+                            if not spieler.is_card_revealed(i, j):
+                                wert = spieler.reveal_card(i, j)
+                                print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
+
+                                # Merke: Spieler hat in diesem Zug bereits gehandelt
+                                letzte_aktion[str(sid)] = True
+                                print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion}")
+
+                                # Nachricht an alle Clients
                                 broadcast({
-                                    "type": "game_over",
-                                    "winner": sid
+                                    "type": "reveal_result",
+                                    "data": {"index": i * 4 + j},
+                                    "player": sid
                                 })
-                            else:
+
+                                # if SkyjoSpiel.check_for_end(spieler):
+                                    # print(f"[SERVER] Spieler {sid} hat alle Karten aufgedeckt – Spielende.")
+                                    # broadcast({
+                                    #     "type": "game_over",
+                                    #     "winner": sid
+                                    # })
+                                # else:
                                 SkyjoSpiel.next_turn()
                                 next_id = SkyjoSpiel.get_current_player().id
                                 print(f"[DEBUG] Nächster Spieler ist: {next_id}")
@@ -225,9 +260,9 @@ def client_thread(conn, sid):
                                 "deck_count": len(SkyjoSpiel.deck),
                                 "card": neue_karte
                             })
-                    
-                    elif typ == "":
-                        pass
+
+                    elif typ == "discard_pile_draw":
+                        switching_cards = True
 
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
