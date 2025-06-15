@@ -160,6 +160,10 @@ class GameGUI:
                 self.revealed[idx] = True
             self.update_gui()
 
+        elif msg_type == "threesome":
+            self.hand = data.get("hand", self.hand)
+            self.update_gui()
+
     def update_gui(self):
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
@@ -168,7 +172,7 @@ class GameGUI:
             btn.config(text=val)
 
             # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
-            if self.is_my_turn:
+            if self.is_my_turn and self.hand is not None:
                 btn.config(state=tk.NORMAL)
             else:
                 btn.config(state=tk.DISABLED)

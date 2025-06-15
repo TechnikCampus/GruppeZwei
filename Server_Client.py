@@ -238,6 +238,22 @@ def client_thread(conn, sid):
                                     "player": str(next_id),
                                     "name": spielerdaten[sid]["name"]
                                 })
+                        if(SkyjoSpiel.threeSome(spieler.hand) is not None):
+                            idx = SkyjoSpiel.threeSome(spieler.hand)
+                            broadcast({
+                                "type": "deck_drawn_card",
+                                "card": spieler.hand[idx]
+                            })
+                            SkyjoSpiel.discard_pile.append(spieler.hand[idx])
+
+                            spieler.hand[idx] = None
+                            spieler.hand[idx + 4] = None
+                            spieler.hand[idx + 8] = None
+
+                            conn.sendall(json.dumps({
+                                "type": "threesome",
+                                "hand": spieler.hand
+                            }).encode("utf-8") + b"\n")
 
                     elif typ == "chat":
                         broadcast({
