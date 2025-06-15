@@ -115,7 +115,7 @@ class GameGUI:
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
 
         elif msg_type == "reveal_result":                                                   # Wenn eine Karte umgedreht wurde wird sich  der entsprechende Index geholt und geprüft ob idx ein gültiger Wert ist
-            idx = data.get("data", {}).get("index")                                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist 
+            idx = data.get("data", {}).get("index")                                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist
             player = message.get("player")
             if idx is not None:
                 self.revealed[idx] = True
@@ -128,7 +128,7 @@ class GameGUI:
                 self.hand.append(card)
             self.update_gui()
 
-        elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert 
+        elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert
             current = data.get("player")
             print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))

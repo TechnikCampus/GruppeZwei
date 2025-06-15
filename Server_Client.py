@@ -72,7 +72,6 @@ config = {
 }
 
 
-
 def broadcast(message, exclude=None):
     raw = json.dumps(message).encode("utf-8") + b"\n"
     with spiel_lock:
@@ -111,8 +110,8 @@ def spiel_starten():
                 "discard_pile": SkyjoSpiel.discard_pile,
 
             }).encode("utf-8") + b"\n")
-        
-        letzte_aktion = {str(sid): False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
+
+        letzte_aktion = {str(sid): False for sid in spielerdaten}   # Reset letzte Aktion für alle Spieler
         # Entferne alle int-Keys, falls noch vorhanden
         for k in list(letzte_aktion.keys()):
             if isinstance(k, int):
