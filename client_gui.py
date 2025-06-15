@@ -27,6 +27,8 @@ class GameGUI:
         self.status_label = tk.Label(self.root, text="Status")                                   # Verbindungsstatus
         self.deck_label = tk.Label(self.root, text="Stapel: ? Karten")                      # Zeigt Anzahl Karten im Deck
         self.deck_label.grid(row=6, column=0, columnspan=2)                                 # Plaziert Label im Grid
+        self.score = tk.Label(self.root, text="Deine Punkte:")
+        self.score.grid(row=6, column=2, columnspan=2)  
         self.build_gui()
 
         self.prompt_player_name()                                                           # Spielernamenabfrage
@@ -183,6 +185,8 @@ class GameGUI:
 
         discard_pile_button.config(text=str(self.discard_pile_top))
 
+        self.count_score()
+
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
         self.chat_display.insert(tk.END, f"{sender}: {message}\n")
@@ -201,3 +205,10 @@ class GameGUI:
 
     def discard_pile_draw(self):
         self.network.send("discard_pile_draw")
+
+    def count_score(self):
+        temp = 0
+        for i in range(12):
+            if self.revealed[i]:
+                temp += self.hand[i]
+        self.score.config(text=f"Deine Punkte: {temp}")
