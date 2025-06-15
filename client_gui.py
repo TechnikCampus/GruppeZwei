@@ -27,6 +27,8 @@ class GameGUI:
         self.status_label = tk.Label(self.root, text="Status")                                   # Verbindungsstatus
         self.deck_label = tk.Label(self.root, text="Stapel: ? Karten")                      # Zeigt Anzahl Karten im Deck
         self.deck_label.grid(row=6, column=0, columnspan=2)                                 # Plaziert Label im Grid
+        self.score = tk.Label(self.root, text="Deine Punkte:")
+        self.score.grid(row=6, column=2, columnspan=2)  
         self.build_gui()
 
         self.prompt_player_name()                                                           # Spielernamenabfrage
@@ -84,7 +86,7 @@ class GameGUI:
             print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
-        if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
+        # if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
             print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
             return
 
@@ -115,7 +117,7 @@ class GameGUI:
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
 
         elif msg_type == "reveal_result":                                                   # Wenn eine Karte umgedreht wurde wird sich  der entsprechende Index geholt und geprüft ob idx ein gültiger Wert ist
-            idx = data.get("data", {}).get("index")                                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist 
+            idx = data.get("data", {}).get("index")                                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist
             player = message.get("player")
             if idx is not None:
                 self.revealed[idx] = True
@@ -128,7 +130,7 @@ class GameGUI:
                 self.hand.append(card)
             self.update_gui()
 
-        elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert 
+        elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert
             current = data.get("player")
             print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))
@@ -151,7 +153,18 @@ class GameGUI:
             self.update_gui()
             self.draw_count += 1
 
-    def update_gui(self): 
+        elif msg_type == "deck_swichted_card":
+            self.hand = data.get("hand", self.hand)
+            idx = data.get("index")
+            if idx is not None:
+                self.revealed[idx] = True
+            self.update_gui()
+
+        elif msg_type == "threesome":
+            self.hand = data.get("hand", self.hand)
+            self.update_gui()
+
+    def update_gui(self):
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
         print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
@@ -159,7 +172,7 @@ class GameGUI:
             btn.config(text=val)
 
             # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
-            if self.is_my_turn and not self.revealed[i]:
+            if self.is_my_turn and self.hand is not None:
                 btn.config(state=tk.NORMAL)
             else:
                 btn.config(state=tk.DISABLED)
@@ -167,11 +180,16 @@ class GameGUI:
         if self.is_my_turn and self.draw_count < 1:
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
+        elif self.is_my_turn and self.draw_count >= 1:
+            deck_button.config(state=tk.DISABLED)
+            discard_pile_button.config(state=tk.NORMAL)
         else:
             deck_button.config(state=tk.DISABLED)
             discard_pile_button.config(state=tk.DISABLED)
 
         discard_pile_button.config(text=str(self.discard_pile_top))
+
+        self.count_score()
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
@@ -190,4 +208,11 @@ class GameGUI:
         # self.discard_pile.append(self.deck.pop(0))
 
     def discard_pile_draw(self):
-        pass
+        self.network.send("discard_pile_draw")
+
+    def count_score(self):
+        temp = 0
+        for i in range(12):
+            if self.revealed[i]:
+                temp += self.hand[i]
+        self.score.config(text=f"Deine Punkte: {temp}")

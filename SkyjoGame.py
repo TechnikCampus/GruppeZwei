@@ -89,18 +89,14 @@ class SkyjoGame:
                     # Tausche die Objekte, wenn der linke Score kleiner ist
                     self.players[j], self.players[j + 1] = self.players[j + 1], self.players[j]
 
-    def threeSome(self, player: Player):
-        for i in range(4):
-
+    def threeSome(self, hand):
+        for i in range(3):
             if (
-                player.grid[0][i] == player.grid[1][i] and player.grid[0][i] == player.grid[2][i] and player.grid[0][i] is not None
+                hand[i] == hand[i + 4] and hand[i] == hand[i + 8] and hand[i] is not None
             ):
-                self.discard_pile.append(player.grid[0][i])
-                player.set_card(0, i, None)
-                self.discard_pile.append(player.grid[1][i])
-                player.set_card(1, i, None)
-                self.discard_pile.append(player.grid[2][i])
-                player.set_card(2, i, None)
+                return i
+            else:
+                return None
 
     def check_for_end(self, player: Player):
         if player.all_cards_revealed():
