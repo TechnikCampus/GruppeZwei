@@ -100,6 +100,11 @@ def spiel_starten():
 
         SkyjoSpiel.deal_initial_cards()
 
+        # Setze den Host als ersten Spieler am Zug
+        host_id = list(spielerdaten.keys())[0]  # Annahme: Der Host ist der erste Spieler, der sich verbindet
+        SkyjoSpiel.current_turn = 0  # Der Host ist der erste Spieler in der Liste
+        print(f"[SERVER] Host Spieler {host_id} ist als erster am Zug.")
+
         for sid in spielerdaten:
             hand = spielerdaten[sid]["spieler"].hand
             spielerdaten[sid]["conn"].sendall(json.dumps({
@@ -107,7 +112,8 @@ def spiel_starten():
                 "player_id": sid,
                 "hand": hand,
                 "discard_pile": SkyjoSpiel.discard_pile,
-                "deck_count": len(SkyjoSpiel.deck)
+                "deck_count": len(SkyjoSpiel.deck),
+                "current_turn": host_id  # Sende den aktuellen Spieler an alle Clients
             }).encode("utf-8") + b"\n")
         
         letzte_aktion = {str(sid): False for sid in spielerdaten} # Reset letzte Aktion für alle Spieler
@@ -119,7 +125,7 @@ def spiel_starten():
         SkyjoSpiel.started = True
         print("[SERVER] Spielrunde gestartet.")
 
-        # Ersten Spieler benachrichtigen
+        # Ersten Spieler benachrichtigen (Host)
         broadcast({
             "type": "turn",
             "player": SkyjoSpiel.get_current_player().id

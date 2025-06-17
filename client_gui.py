@@ -95,9 +95,11 @@ class GameGUI:
         if self.current_player != self.player.id:
             print("[CLIENT] Du bist nicht am Zug.")
             return
+        card_value = self.player.grid[row][col]
+        if card_value is None:
+            card_value = random.randint(-2, 12)  # Beispiel für zufällige Kartenwerte
+            self.player.grid[row][col] = card_value
         self.player.revealed[row][col] = True
-        card_value = random.randint(-2, 12)
-        self.player.grid[row][col] = card_value
         self.network.send("reveal_card", {"row": row, "col": col, "value": card_value})
         self.update_gui()
 
@@ -119,6 +121,7 @@ class GameGUI:
             name = simpledialog.askstring("Spielername", "Gib deinen Spielernamen ein:")
         from class_player import Player
         self.player = Player(name)
+        self.player.id = name
         self.root.title(f"Skyjo – {self.player.id}")
 
     def connect_to_server(self):
@@ -139,6 +142,7 @@ class GameGUI:
 
         if msg_type == "start":
             self.player.hand = data.get("hand", [])
+            self.current_player = data.get("current_turn")  # Setze den aktuellen Spieler
             self.display_chat("System", f"Spiel startet – du bist {self.player.id}")
         elif msg_type == "card_drawn":
             card = data.get("card")
