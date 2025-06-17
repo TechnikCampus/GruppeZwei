@@ -1,13 +1,16 @@
+
 import tkinter as tk
 from tkinter import simpledialog, PhotoImage
 from Server_Client import NetworkClient
 
 PORT = 65435
 
+
 class GameGUI:
     def __init__(self, root, server_ip, server_port):
         self.root = root
         self.root.title("Skyjo Client")
+
 
         # Load images
         self.background_image_initial = PhotoImage(file="Spielhintergrund.png")
@@ -40,6 +43,7 @@ class GameGUI:
         self.prompt_player_name()                                                           # Spielernamenabfrage
         self.network = NetworkClient(server_ip, server_port, self.handle_server_message, self.on_connected) # erstellt den Client für die Kommunikation
         self.root.after(100, self.connect_to_server)                                        # Startet Verbindung zum Server nach 100ms
+
 
     def build_gui(self):
         for i in range(3):                                                                  # Zeilen
@@ -95,7 +99,9 @@ class GameGUI:
             print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
+
         if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
+
             print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
             return
 
@@ -148,7 +154,9 @@ class GameGUI:
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
             else:
+
                 self.status_label.config(text=f"{data.get('name', '?')} ist am Zug")
+
             self.update_gui()
 
         elif msg_type == "deck_update":                                                     # Fragt die Anzahl der Karten im Stappel ab  #Anmerkung: wahrscheinlich redundant
@@ -163,6 +171,7 @@ class GameGUI:
             self.draw_count += 1
 
         elif msg_type == "deck_switched_card":
+
             self.hand = data.get("hand", self.hand)
             idx = data.get("index")
             if idx is not None:
@@ -229,3 +238,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = GameGUI(root, "127.0.0.1", PORT)
     root.mainloop()
+

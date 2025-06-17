@@ -54,14 +54,12 @@ class SkyjoGame:
     def draw_cards(self, amount):
         return [self.deck.pop() for _ in range(amount) if self.deck]
 
-    def player_draw_new_card(self, player: Player):
-        if self.started and player == self.get_current_player():
-            if self.deck:
-                # card = self.deck.pop()
-                # player.hand.append(card)
-                # return card
-                self.discard_pile.append(self.deck.pop())
-        return None
+    def draw_new_card(self):
+        if self.deck:
+            # card = self.deck.pop()
+            # player.hand.append(card)
+            # return card
+            return self.deck.pop(0)
 
     def player_ready(self, player: Player):
         player.is_ready = True
@@ -83,12 +81,6 @@ class SkyjoGame:
     def wait_for_communication(self):
         pass
 
-    def wait_for_host_information(self):
-        pass
-
-    def transfer_player_information(self):
-        pass
-
     def sort_players(self):
         n = len(self.players)
         for i in range(n):
@@ -97,18 +89,14 @@ class SkyjoGame:
                     # Tausche die Objekte, wenn der linke Score kleiner ist
                     self.players[j], self.players[j + 1] = self.players[j + 1], self.players[j]
 
-    def threeSome(self, player: Player):
-        for i in range(4):
-
+    def threeSome(self, hand):
+        for i in range(3):
             if (
-                player.grid[0][i] == player.grid[1][i] and player.grid[0][i] == player.grid[2][i] and player.grid[0][i] is not None
+                hand[i] == hand[i + 4] and hand[i] == hand[i + 8] and hand[i] is not None
             ):
-                self.discard_pile.append(player.grid[0][i])
-                player.set_card(0, i, None)
-                self.discard_pile.append(player.grid[1][i])
-                player.set_card(1, i, None)
-                self.discard_pile.append(player.grid[2][i])
-                player.set_card(2, i, None)
+                return i
+            else:
+                return None
 
     def check_for_end(self, player: Player):
         if player.all_cards_revealed():
