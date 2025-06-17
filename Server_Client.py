@@ -313,6 +313,7 @@ def server_starten(konfig):
         threading.Thread(target=client_thread, args=(conn, sid), daemon=True).start()
         sid += 1
 
+
 # Verbesserte keyboard_input.py mit GUI-Markierung, Netzwerkverbindung und Event-Unterstützung
 import tkinter as tk
 from tkinter import messagebox
