@@ -1,6 +1,5 @@
 import tkinter as tk
-from tkinter import simpledialog
-from tkinter import PhotoImage
+from tkinter import simpledialog, PhotoImage
 from Server_Client import NetworkClient
 
 PORT = 65435
@@ -94,6 +93,10 @@ class GameGUI:
         if not self.is_my_turn:
             self.status_label.config(text="Nicht dein Zug!")
             print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
+            return
+
+        if self.revealed[idx]:
+            print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
             return
 
         print(f"[DEBUG] Aufdecken von Karte {idx}")
@@ -219,3 +222,9 @@ class GameGUI:
             if self.revealed[i]:
                 temp += self.hand[i]
         self.score.config(text=f"Deine Punkte: {temp}")
+
+# Example usage:
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = GameGUI(root, "127.0.0.1", PORT)
+    root.mainloop()
