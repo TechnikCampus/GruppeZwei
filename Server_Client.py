@@ -202,6 +202,34 @@ def client_thread(conn, sid):
                                 "name": spielerdaten[sid]["name"]
                             })
 
+                            for row in range(3):  # 3 Zeilen
+                                start = row * 4
+                                for col in range(2):  # 0 und 1 -> (0,1,2) und (1,2,3)
+                                    idx1 = start + col
+                                    idx2 = start + col + 1
+                                    idx3 = start + col + 2
+                                    if (
+                                        spieler.hand[idx1] == spieler.hand[idx2] == spieler.hand[idx3] and spieler.hand[idx1] is not None
+                                    ):
+                                        print(f"Dreier gefunden in Zeile {row}, Spalte {col}-{col+2}")
+
+                            #if (SkyjoSpiel.threeSome(spieler.hand) is not 1234):
+                            #    idx = SkyjoSpiel.threeSome(spieler.hand)
+                            #    broadcast({
+                            #        "type": "deck_drawn_card",
+                            #        "card": spieler.hand[idx]
+                            #    })
+                            #    SkyjoSpiel.discard_pile.append(spieler.hand[idx])
+#
+                            #    spieler.hand[idx] = 0
+                            #    spieler.hand[idx + 4] = 0
+                            #    spieler.hand[idx + 8] = 0
+#
+                            #    conn.sendall(json.dumps({
+                            #        "type": "threesome",
+                            #        "hand": spieler.hand
+                            #    }).encode("utf-8") + b"\n")
+
                         else:
 
                             if not spieler.is_card_revealed(i, j):
@@ -210,7 +238,7 @@ def client_thread(conn, sid):
 
                                 # Merke: Spieler hat in diesem Zug bereits gehandelt
                                 letzte_aktion[str(sid)] = True
-                                print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion}")
+                                print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion} \n")
 
                                 # Nachricht an alle Clients
                                 broadcast({
@@ -238,22 +266,35 @@ def client_thread(conn, sid):
                                     "player": str(next_id),
                                     "name": spielerdaten[sid]["name"]
                                 })
-                        if(SkyjoSpiel.threeSome(spieler.hand) is not None):
-                            idx = SkyjoSpiel.threeSome(spieler.hand)
-                            broadcast({
-                                "type": "deck_drawn_card",
-                                "card": spieler.hand[idx]
-                            })
-                            SkyjoSpiel.discard_pile.append(spieler.hand[idx])
 
-                            spieler.hand[idx] = None
-                            spieler.hand[idx + 4] = None
-                            spieler.hand[idx + 8] = None
+                                for row in range(3):  # 3 Zeilen
+                                    start = row * 4
+                                    for col in range(2):  # 0 und 1 -> (0,1,2) und (1,2,3)
+                                        idx1 = start + col
+                                        idx2 = start + col + 1
+                                        idx3 = start + col + 2
+                                        if (
+                                            spieler.hand[idx1] == spieler.hand[idx2] == spieler.hand[idx3] and spieler.hand[idx1] is not None
+                                        ):
+                                            print(f"Dreier gefunden in Zeile {row}, Spalte {col}-{col+2}")
 
-                            conn.sendall(json.dumps({
-                                "type": "threesome",
-                                "hand": spieler.hand
-                            }).encode("utf-8") + b"\n")
+                                # if (SkyjoSpiel.threeSome(spieler.hand) is not 1234):
+                                #     print("[DEBUG] dreier wurde erkannt")
+                                #     idx = SkyjoSpiel.threeSome(spieler.hand)
+                                #     broadcast({
+                                #         "type": "deck_drawn_card",
+                                #         "card": spieler.hand[idx]
+                                #     })
+                                #     SkyjoSpiel.discard_pile.append(spieler.hand[idx])
+# 
+                                #     spieler.hand[idx] = 0
+                                #     spieler.hand[idx + 4] = 0
+                                #     spieler.hand[idx + 8] = 0
+# 
+                                #     conn.sendall(json.dumps({
+                                #         "type": "threesome",
+                                #         "hand": spieler.hand
+                                #     }).encode("utf-8") + b"\n")
 
                     elif typ == "chat":
                         broadcast({
