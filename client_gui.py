@@ -1,6 +1,6 @@
 
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import simpledialog, PhotoImage
 from Server_Client import NetworkClient
 
 PORT = 65435
@@ -10,6 +10,15 @@ class GameGUI:
     def __init__(self, root, server_ip, server_port):
         self.root = root
         self.root.title("Skyjo Client")
+
+
+        # Load images
+        self.background_image_initial = PhotoImage(file="Spielhintergrund.png")
+        self.background_image_connected = PhotoImage(file="Lobby.png")
+
+        # Create a label to display the background image
+        self.background_label = tk.Label(self.root, image=self.background_image_initial)
+        self.background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
         self.player_id = None                                       # vom Server zu geteilte ID
         self.hand = ["?"] * 12                                      # Kartendeck des einzelnen
@@ -34,6 +43,7 @@ class GameGUI:
         self.prompt_player_name()                                                           # Spielernamenabfrage
         self.network = NetworkClient(server_ip, server_port, self.handle_server_message, self.on_connected) # erstellt den Client für die Kommunikation
         self.root.after(100, self.connect_to_server)                                        # Startet Verbindung zum Server nach 100ms
+
 
     def build_gui(self):
         for i in range(3):                                                                  # Zeilen
@@ -68,10 +78,17 @@ class GameGUI:
         connected = self.network.connect()
         if not connected:
             self.status_label.config(text="Verbindung fehlgeschlagen")
+        else:
+            self.on_connected()
 
     def on_connected(self):                                                                 # Gibt dem Server den Name ds Spielers
         self.status_label.config(text="Verbunden mit Server")
-        # print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")                     #Anmerkung: Name wird als ID gespeichert, Ändern!
+
+                  #Anmerkung: Name wird als ID gespeichert, Ändern!
+
+        self.background_label.config(image=self.background_image_connected)
+        print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")                     #Anmerkung: Name wird als ID gespeichert, Ändern!
+
         self.network.send("join", {"name": self.player_id})
 
     def send_chat_message(self):                                                            # Wird beim Senden-Button ausgefuerht
@@ -86,7 +103,9 @@ class GameGUI:
             # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
-        # if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
+
+        if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
+
             print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
             return
 
@@ -139,7 +158,9 @@ class GameGUI:
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
             else:
-                self.status_label.config(text=f"{data.get("name", "?")} ist am Zug")
+
+                self.status_label.config(text=f"{data.get('name', '?')} ist am Zug")
+
             self.update_gui()
 
         elif msg_type == "deck_update":                                                     # Fragt die Anzahl der Karten im Stappel ab  #Anmerkung: wahrscheinlich redundant
@@ -153,7 +174,8 @@ class GameGUI:
             self.update_gui()
             self.draw_count += 1
 
-        elif msg_type == "deck_swichted_card":
+        elif msg_type == "deck_switched_card":
+
             self.hand = data.get("hand", self.hand)
             idx = data.get("index")
             if idx is not None:
@@ -209,8 +231,6 @@ class GameGUI:
 
         self.network.send("deck_draw_card")
 
-        # self.discard_pile.append(self.deck.pop(0))
-
     def discard_pile_draw(self):
         self.network.send("discard_pile_draw")
 
@@ -220,3 +240,10 @@ class GameGUI:
             if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
                 temp += self.hand[i]
         self.score.config(text=f"Deine Punkte: {temp}")
+
+# Example usage:
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = GameGUI(root, "127.0.0.1", PORT)
+    root.mainloop()
+
