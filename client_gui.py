@@ -177,6 +177,10 @@ class GameGUI:
             else:
                 btn.config(state=tk.DISABLED)
 
+            if val == 13:
+                btn.config(state=tk.DISABLED)
+                btn.config(text="X")  # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
+
         if self.is_my_turn and self.draw_count < 1:
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
@@ -213,6 +217,6 @@ class GameGUI:
     def count_score(self):
         temp = 0
         for i in range(12):
-            if self.revealed[i]:
+            if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
                 temp += self.hand[i]
         self.score.config(text=f"Deine Punkte: {temp}")
