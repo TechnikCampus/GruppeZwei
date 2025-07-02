@@ -103,6 +103,12 @@ class GameGUI:
             # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
+
+        # if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
+
+            print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
+            return
+
         print(f"[DEBUG] Aufdecken von Karte {idx}")                                         # Falls beide Abfragen nein sind, wir die Karte aufgedeckt und an den Server weitergeleitet
         self.revealed[idx] = True
         self.update_gui()
