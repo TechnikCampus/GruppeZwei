@@ -103,12 +103,6 @@ class GameGUI:
             # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
-
-        if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
-
-            print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
-            return
-
         print(f"[DEBUG] Aufdecken von Karte {idx}")                                         # Falls beide Abfragen nein sind, wir die Karte aufgedeckt und an den Server weitergeleitet
         self.revealed[idx] = True
         self.update_gui()
@@ -240,10 +234,3 @@ class GameGUI:
             if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
                 temp += self.hand[i]
         self.score.config(text=f"Deine Punkte: {temp}")
-
-# Example usage:
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = GameGUI(root, "127.0.0.1", PORT)
-    root.mainloop()
-
