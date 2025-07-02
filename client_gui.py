@@ -72,7 +72,7 @@ class GameGUI:
         while not name:
             name = simpledialog.askstring("Spielername", "Gib deinen Spielernamen ein:")
         self.player_id = str(name)                                                          #Anmerkung: Name wird als ID gespeichert, am besten noch ändern aufgrund von leserlichkeit
-        print(f"[DEBUG] Spielername gesetzt: {self.player_id}")
+        # print(f"[DEBUG] Spielername gesetzt: {self.player_id}")
 
     def connect_to_server(self):                                                            # Baut Verbindung zum Server, wenn nicht dann Fehlermeldung
         connected = self.network.connect()
@@ -83,8 +83,12 @@ class GameGUI:
 
     def on_connected(self):                                                                 # Gibt dem Server den Name ds Spielers
         self.status_label.config(text="Verbunden mit Server")
+
+                  #Anmerkung: Name wird als ID gespeichert, Ändern!
+
         self.background_label.config(image=self.background_image_connected)
         print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")                     #Anmerkung: Name wird als ID gespeichert, Ändern!
+
         self.network.send("join", {"name": self.player_id})
 
     def send_chat_message(self):                                                            # Wird beim Senden-Button ausgefuerht
@@ -96,7 +100,7 @@ class GameGUI:
     def reveal_card(self, idx):
         if not self.is_my_turn:                                                             # Abfrage ob Spieler dran ist
             self.status_label.config(text="Nicht dein Zug!")                                #Anmerkung: ist bestimmt eleganter zu lösen!
-            print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
+            # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
 
@@ -114,7 +118,7 @@ class GameGUI:
         msg_type = message.get("type")                                                      # speichert Typ und Daten der Nachricht ab
         data = message.get("data", message)
 
-        print(f"[DEBUG] Nachricht vom Server: {msg_type} – {data}")
+        # print(f"[DEBUG] Nachricht vom Server: {msg_type} – {data}")
 
         if msg_type == "start":                                                             # Wenn Start empfangen wurde dann werden die Daten für den jeweiligen Spieler gespeichert
             self.hand = data.get("hand", self.hand)
@@ -136,7 +140,7 @@ class GameGUI:
             player = message.get("player")
             if idx is not None:
                 self.revealed[idx] = True
-                print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
+                # print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
             self.update_gui()
 
         elif msg_type == "card_drawn":                                                      # Wenn neue Karte gezogem wird dann wird diese Karte der Hand übergeben
@@ -147,9 +151,9 @@ class GameGUI:
 
         elif msg_type == "turn":                                                            # wenn ein neuer Spieler dran ist, wird geprüft ob man selbst derjenige ist und dementsprechend wird die Statusleiste aktualisiert
             current = data.get("player")
-            print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
+            # print(f"[DEBUG] Aktueller Zugspieler laut Server: {current}")
             self.is_my_turn = (str(current) == str(self.player_id))
-            print(f"[DEBUG] Bin ich dran? {self.is_my_turn}")
+            # print(f"[DEBUG] Bin ich dran? {self.is_my_turn}")
             self.draw_count = 0
             if self.is_my_turn:
                 self.status_label.config(text="Du bist am Zug!")
@@ -184,7 +188,7 @@ class GameGUI:
 
     def update_gui(self):
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
-        print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
+        # print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
             btn.config(text=val)
@@ -194,6 +198,10 @@ class GameGUI:
                 btn.config(state=tk.NORMAL)
             else:
                 btn.config(state=tk.DISABLED)
+
+            if val == 13:
+                btn.config(state=tk.DISABLED)
+                btn.config(text="X")  # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
 
         if self.is_my_turn and self.draw_count < 1:
             deck_button.config(state=tk.NORMAL)
@@ -218,7 +226,7 @@ class GameGUI:
     def deck_draw_card(self):
         if not self.is_my_turn:                                                             # Abfrage ob Spieler dran ist
             self.status_label.config(text="Nicht dein Zug!")                                #Anmerkung: ist bestimmt eleganter zu lösen!
-            print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
+            # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
         self.network.send("deck_draw_card")
@@ -229,7 +237,7 @@ class GameGUI:
     def count_score(self):
         temp = 0
         for i in range(12):
-            if self.revealed[i]:
+            if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
                 temp += self.hand[i]
         self.score.config(text=f"Deine Punkte: {temp}")
 

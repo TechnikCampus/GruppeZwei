@@ -91,12 +91,10 @@ class SkyjoGame:
 
     def threeSome(self, hand):
         for i in range(3):
-            if (
-                hand[i] == hand[i + 4] and hand[i] == hand[i + 8] and hand[i] is not None
-            ):
+            if (hand[i] == hand[i + 4] and hand[i] == hand[i + 8] and hand[i] is not None):
                 return i
             else:
-                return None
+                return 1234
 
     def check_for_end(self, player: Player):
         if player.all_cards_revealed():
