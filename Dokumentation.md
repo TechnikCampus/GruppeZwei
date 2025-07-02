@@ -116,4 +116,12 @@ Bei Auswahl von „Host“ wird der Server initialisiert.
 Bei Auswahl von „Beitreten“ erfolgt die IP-Eingabe und die Verbindung zum bestehenden Server.
 
 
+Spiel Ende implementieren/ neue Runde
+Andere Spielerdecks anzeigen
+Bilder anpassen
+Kommentare
+Klassen in eigene Datein implementieren
+Dokumentation machen
+Gesamte Punktzahl
+Gewinner, wer die geringste Punktzahl hat
 
