@@ -185,7 +185,7 @@ def client_thread(conn, sid):
                                 wert = spieler.reveal_card(i, j)
 
                             conn.sendall(json.dumps({
-                                "type": "deck_swichted_card",
+                                "type": "deck_switched_card",
                                 "hand": spieler.hand,
                                 "index": index
                             }).encode("utf-8") + b"\n")
