@@ -27,6 +27,7 @@ class GameGUI:
         self.discard_pile = []
         self.discard_pile_top = "?"
         self.draw_count = 0
+        self.start_count = 0
 
         self.card_buttons = []                                      # liste aller Tkinter Buttons
         self.piles = []
@@ -142,6 +143,8 @@ class GameGUI:
                 self.revealed[idx] = True
                 # print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
             self.update_gui()
+            self.start_count += 1
+
 
         elif msg_type == "card_drawn":                                                      # Wenn neue Karte gezogem wird dann wird diese Karte der Hand übergeben
             card = data.get("card")
@@ -203,10 +206,10 @@ class GameGUI:
                 btn.config(state=tk.DISABLED)
                 btn.config(text="X")  # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
 
-        if self.is_my_turn and self.draw_count < 1:
+        if self.is_my_turn and self.draw_count < 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
-        elif self.is_my_turn and self.draw_count >= 1:
+        elif self.is_my_turn and self.draw_count >= 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.DISABLED)
             discard_pile_button.config(state=tk.NORMAL)
         else:
