@@ -11,7 +11,6 @@ class GameGUI:
         self.root = root
         self.root.title("Skyjo Client")
 
-
         # Load images
         self.background_image_initial = PhotoImage(file="Spielhintergrund.png")
         self.background_image_connected = PhotoImage(file="Lobby.png")
@@ -28,6 +27,7 @@ class GameGUI:
         self.discard_pile_top = "?"
         self.draw_count = 0
         self.start_count = 0
+        self.score_overall = 0                                   # Gesamtpunkte
 
         self.card_buttons = []                                      # liste aller Tkinter Buttons
         self.piles = []
@@ -38,13 +38,14 @@ class GameGUI:
         self.deck_label = tk.Label(self.root, text="Stapel: ? Karten")                      # Zeigt Anzahl Karten im Deck
         self.deck_label.grid(row=6, column=0, columnspan=2)                                 # Plaziert Label im Grid
         self.score = tk.Label(self.root, text="Deine Punkte:")
-        self.score.grid(row=6, column=2, columnspan=2)  
+        self.score.grid(row=6, column=2, columnspan=2)
+        self.score_overall = tk.Label(self.root, text="Deine Gesamtpunktzahl:")
+        self.score_overall.grid(row=6, column=4, columnspan=2)
         self.build_gui()
 
         self.prompt_player_name()                                                           # Spielernamenabfrage
-        self.network = NetworkClient(server_ip, server_port, self.handle_server_message, self.on_connected) # erstellt den Client für die Kommunikation
+        self.network = NetworkClient(server_ip, server_port, self.handle_server_message, self.on_connected)  # erstellt den Client für die Kommunikation
         self.root.after(100, self.connect_to_server)                                        # Startet Verbindung zum Server nach 100ms
-
 
     def build_gui(self):
         for i in range(3):                                                                  # Zeilen
@@ -104,12 +105,6 @@ class GameGUI:
             # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
             return
 
-
-        # if self.revealed[idx]:                                                              # Abfrage ob Karte schon aufgedeckt ist
-
-            print(f"[DEBUG] Karte {idx} ist bereits aufgedeckt.")
-            return
-
         print(f"[DEBUG] Aufdecken von Karte {idx}")                                         # Falls beide Abfragen nein sind, wir die Karte aufgedeckt und an den Server weitergeleitet
         self.revealed[idx] = True
         self.update_gui()
@@ -144,7 +139,6 @@ class GameGUI:
                 # print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
             self.update_gui()
             self.start_count += 1
-
 
         elif msg_type == "card_drawn":                                                      # Wenn neue Karte gezogem wird dann wird diese Karte der Hand übergeben
             card = data.get("card")
@@ -189,6 +183,11 @@ class GameGUI:
             self.hand = data.get("hand", self.hand)
             self.update_gui()
 
+        elif msg_type == "game_over":                                                      # Wenn Runde zu Ende ist, wird der Spielername und die Punkte angezeigt
+            self.status_label.config(text="Spiel beendet!")
+            self.update_gui()
+            self.root.after(6000, self.root.destroy)
+
     def update_gui(self):
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
         # print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
@@ -219,6 +218,7 @@ class GameGUI:
         discard_pile_button.config(text=str(self.discard_pile_top))
 
         self.count_score()
+        self.check_for_end()  # Überprüft, ob das Spiel zu Ende ist
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
@@ -243,3 +243,13 @@ class GameGUI:
             if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
                 temp += self.hand[i]
         self.score.config(text=f"Deine Punkte: {temp}")
+
+    def check_for_end(self):
+        if all(self.revealed):
+            self.network.send("round_over", {"player": self.player_id})
+            self.status_label.config(text="Spiel beendet! Du hast alle Karten aufgedeckt.")
+            print(f"[DEBUG] Spieler {self.player_id} hat alle Karten aufgedeckt – Spielende.")
+            for i in range(12):
+                if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
+                    self.score_overall += self.hand[i]
+                    self.score_overll.config(text=f"Deine Punkte: {self.score_overall}")
