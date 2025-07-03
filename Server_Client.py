@@ -3,6 +3,7 @@ import threading
 import json
 from SkyjoGame import SkyjoGame
 from class_player import Player
+# from networkClientClass import NetworkClient
 
 # ==== Konfiguration & Spielstatus ====
 PORT = 65435
