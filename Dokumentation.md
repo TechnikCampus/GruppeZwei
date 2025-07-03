@@ -116,4 +116,16 @@ Bei Auswahl von „Host“ wird der Server initialisiert.
 Bei Auswahl von „Beitreten“ erfolgt die IP-Eingabe und die Verbindung zum bestehenden Server.
 
 
+Spiel Ende implementieren/ neue Runde       (Linus)
+Gesamte Punktzahl
+Gewinner, wer die geringste Punktzahl hat
 
+Kommentare                                  (wer Zeit hat)
+Klassen in eigene Datein implementieren     (Linus)
+
+Dokumentation machen            (Nico)
+
+Bilder anpassen             (Tom/Avi)
+
+
+Andere Spielerdecks anzeigen    (wenn noch Zeit is)
