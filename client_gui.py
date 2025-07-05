@@ -218,7 +218,7 @@ class GameGUI:
         discard_pile_button.config(text=str(self.discard_pile_top))
 
         self.count_score()
-        self.check_for_end()  # Überprüft, ob das Spiel zu Ende ist
+        # self.check_for_end()  # Überprüft, ob das Spiel zu Ende ist
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)

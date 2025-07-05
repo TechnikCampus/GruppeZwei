@@ -271,33 +271,33 @@ def client_thread(conn, sid):
                     elif typ == "discard_pile_draw":
                         switching_cards = True
 
-                    elif typ == "round_over":
+                    # elif typ == "round_over":
                         rounds_left -= 1
                         statusOfRound = False
 
-                    if (statusOfRound is False) and (rounds_left <= 0):
-                        rounds -= 1
-                        if rounds <= 0:
-                            print("[SERVER] Spiel beendet.")
-                            broadcast({"type": "game_over"})
-                            SkyjoSpiel.reset_game()
-                            with spiel_lock:
-                                spielerdaten.clear()
-                        else:
-                            print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
-                            SkyjoSpiel.reset_game()
-                            SkyjoSpiel.initialize_deck()
-                            SkyjoSpiel.deal_initial_cards()
-
-                            for sid in spielerdaten:
-                                hand = spielerdaten[sid]["spieler"].hand
-                                spielerdaten[sid]["conn"].sendall(json.dumps({
-                                    "type": "start",
-                                    "player_id": sid,
-                                    "hand": hand,
-                                    "discard_pile": SkyjoSpiel.discard_pile,
-
-                                }).encode("utf-8") + b"\n")
+                    # if (statusOfRound is False) and (rounds_left <= 0):
+                    #    rounds -= 1
+                    #    if rounds <= 0:
+                    #        print("[SERVER] Spiel beendet.")
+                    #        broadcast({"type": "game_over"})
+                    #        SkyjoSpiel.reset_game()
+                    #        with spiel_lock:
+                    #            spielerdaten.clear()
+                    #    else:
+                    #        print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
+                    #        SkyjoSpiel.reset_game()
+                    #        SkyjoSpiel.initialize_deck()
+                    #        SkyjoSpiel.deal_initial_cards()
+#
+                    #        for sid in spielerdaten:
+                    #            hand = spielerdaten[sid]["spieler"].hand
+                    #            spielerdaten[sid]["conn"].sendall(json.dumps({
+                    #                "type": "start",
+                    #                "player_id": sid,
+                    #                "hand": hand,
+                    #                "discard_pile": SkyjoSpiel.discard_pile,
+#
+                    #            }).encode("utf-8") + b"\n")
 
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
