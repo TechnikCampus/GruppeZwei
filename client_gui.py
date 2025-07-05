@@ -10,6 +10,7 @@ class GameGUI:
     def __init__(self, root, server_ip, server_port):
         self.root = root
         self.root.title("Skyjo Client")
+        self.root.geometry("700x400")
 
         # Load images
         self.background_image_initial = PhotoImage(file="Spielhintergrund.png")
@@ -28,6 +29,8 @@ class GameGUI:
         self.draw_count = 0
         self.start_count = 0
         self.score_overall = 0                                   # Gesamtpunkte
+        self.statusGame = True
+        self.round_over_sent = False
 
         self.card_buttons = []                                      # liste aller Tkinter Buttons
         self.piles = []
@@ -39,8 +42,6 @@ class GameGUI:
         self.deck_label.grid(row=6, column=0, columnspan=2)                                 # Plaziert Label im Grid
         self.score = tk.Label(self.root, text="Deine Punkte:")
         self.score.grid(row=6, column=2, columnspan=2)
-        self.score_overall = tk.Label(self.root, text="Deine Gesamtpunktzahl:")
-        self.score_overall.grid(row=6, column=4, columnspan=2)
         self.build_gui()
 
         self.prompt_player_name()                                                           # Spielernamenabfrage
@@ -89,7 +90,7 @@ class GameGUI:
                   #Anmerkung: Name wird als ID gespeichert, Ändern!
 
         self.background_label.config(image=self.background_image_connected)
-        print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")                     #Anmerkung: Name wird als ID gespeichert, Ändern!
+        # print(f"[DEBUG] Sende join an Server mit ID: {self.player_id}")                     #Anmerkung: Name wird als ID gespeichert, Ändern!
 
         self.network.send("join", {"name": self.player_id})
 
@@ -184,8 +185,9 @@ class GameGUI:
             self.update_gui()
 
         elif msg_type == "game_over":                                                      # Wenn Runde zu Ende ist, wird der Spielername und die Punkte angezeigt
+            print("[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen.")
+            self.statusGame = False
             self.status_label.config(text="Spiel beendet!")
-            self.update_gui()
             self.root.after(6000, self.root.destroy)
 
     def update_gui(self):
@@ -217,7 +219,7 @@ class GameGUI:
 
         discard_pile_button.config(text=str(self.discard_pile_top))
 
-        self.count_score()
+        self.score.config(text=f"Deine Punkte: {self.count_score()}")
         self.check_for_end()  # Überprüft, ob das Spiel zu Ende ist
 
     def display_chat(self, sender, message):
@@ -240,16 +242,16 @@ class GameGUI:
     def count_score(self):
         temp = 0
         for i in range(12):
-            if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
+            if self.revealed[i] and self.hand[i] != 13 and self.statusGame:  # Wenn Karte aufgedeckt und nicht 13 (X)
                 temp += self.hand[i]
-        self.score.config(text=f"Deine Punkte: {temp}")
+        temp += self.score_overall
+        return temp
 
     def check_for_end(self):
-        if all(self.revealed):
+        if all(self.revealed) and not self.round_over_sent:
+            self.round_over_sent = True
             self.network.send("round_over", {"player": self.player_id})
             self.status_label.config(text="Spiel beendet! Du hast alle Karten aufgedeckt.")
             print(f"[DEBUG] Spieler {self.player_id} hat alle Karten aufgedeckt – Spielende.")
-            for i in range(12):
-                if self.revealed[i] and self.hand[i] != 13:  # Wenn Karte aufgedeckt und nicht 13 (X)
-                    self.score_overall += self.hand[i]
-                    self.score_overll.config(text=f"Deine Punkte: {self.score_overall}")
+            self.score_overall = self.count_score()
+            self.score.config(text=f"Deine Punkte: {self.score_overall}")
