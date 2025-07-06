@@ -18,6 +18,7 @@ def get_local_ip():
     try:
         s.connect(("10.255.255.255", 1))
         IP = s.getsockname()[0]
+        print(IP)
     except Exception:
         IP = "127.0.0.1"
     finally:
