@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import simpledialog, PhotoImage
 from Server_Client import NetworkClient
+import time
 
 PORT = 65435
 
@@ -127,6 +128,32 @@ class GameGUI:
             else:
                 self.discard_pile_top = "?"
 
+            self.revealed = [False] * 12
+            self.round_over_sent = False
+            self.start_count = 0
+            self.is_my_turn = False
+            self.draw_count = 0
+            self.statusGame = True
+            self.update_gui()
+
+        elif msg_type == "new_round":
+            self.status_label.config(text="Es beginnt eine neue Runde!")
+            time.sleep(5)
+            self.hand = data.get("hand", self.hand)
+            self.player_id = str(data.get("player_id"))
+            self.status_label.config(text="Spiel gestartet")
+            self.discard_pile = data.get("discard_pile", "?")
+            if self.discard_pile:
+                self.discard_pile_top = self.discard_pile[-1]
+            else:
+                self.discard_pile_top = "?"
+
+            self.revealed = [False] * 12
+            self.round_over_sent = False
+            self.start_count = 0
+            self.is_my_turn = False
+            self.draw_count = 0
+            self.statusGame = True
             self.update_gui()
 
         elif msg_type == "chat":                                                            # Wenn Chat empfangen wurde dann wird die Nachricht und der Text geprintet

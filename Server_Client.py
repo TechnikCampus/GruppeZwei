@@ -303,11 +303,17 @@ def client_thread(conn, sid):
                                     print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
                                     SkyjoSpiel.reset_game()
                                     SkyjoSpiel.initialize_deck()
+                                    # Spielerobjekte neu anlegen!
+                                    SkyjoSpiel.players.clear()
+                                    for sid in spielerdaten:
+                                        spieler = Player(str(sid))
+                                        spielerdaten[sid]["spieler"] = spieler
+                                        SkyjoSpiel.add_player(spieler)
                                     SkyjoSpiel.deal_initial_cards()
                                     for sid in spielerdaten:
                                         hand = spielerdaten[sid]["spieler"].hand
                                         spielerdaten[sid]["conn"].sendall(json.dumps({
-                                            "type": "start",
+                                            "type": "new_round",
                                             "player_id": sid,
                                             "hand": hand,
                                             "discard_pile": SkyjoSpiel.discard_pile,

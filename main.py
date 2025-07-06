@@ -30,7 +30,7 @@ def get_local_ip():
 def start_host():
     try:
         spieler = simpledialog.askinteger("Einstellungen", "Wie viele Spieler?")
-        runden = simpledialog.askinteger("Einstellungen", "Wie viele Spiele?")
+        runden = simpledialog.askinteger("Einstellungen", "Wie viele Runden?")
         if not spieler or not runden:
             raise ValueError("Ungültige Eingabe")
         config["anzahl_spieler"] = spieler
