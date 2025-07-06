@@ -23,6 +23,8 @@ switching_cards = False
 rounds_left = 0
 roundisOver = False
 rounds = 0
+finishing_player = None
+players_finished = set()
 
 
 def broadcast(message, exclude=None):
@@ -82,7 +84,7 @@ def spiel_starten():
 
 # ==== Server-Thread pro Client ====
 def client_thread(conn, sid):
-    global switching_cards, rounds_left, roundisOver, rounds
+    global switching_cards, rounds_left, roundisOver, rounds, finishing_player, players_finished
     print(f"[SERVER] Spieler {sid} verbunden.")
 
     buffer = b""
@@ -112,6 +114,10 @@ def client_thread(conn, sid):
                         if current_player is None or current_player.id != str(sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
                             continue
+
+                        if finishing_player is not None and str(sid) == finishing_player and str(sid) in players_finished:
+                            print(f"[SERVER] Spieler {sid} hat die Runde bereits beendet und darf keine Züge mehr machen.")
+                            continue  # Zug wird ignoriert
 
                         # Nur eine Aktion pro Zug erlauben
                         if letzte_aktion.get(str(sid), False):
@@ -272,13 +278,31 @@ def client_thread(conn, sid):
                     elif typ == "round_over":
                         spieler = data.get("player", "?")
                         print(f"{spieler} hat die Runde beendet")
-                        rounds_left -= 1
-                        roundisOver = True
-                        # Sofort prüfen, ob alle durch sind (besonders bei nur 1 Spieler)
-                        if rounds_left <= 0:
-                            roundisOver = True
 
-                        if (roundisOver is True):
+                        # Wer hat als erstes beendet?
+                        if finishing_player is None:
+                            finishing_player = str(sid)
+                            players_finished = set([finishing_player])
+                            print(f"[SERVER] finishing_player ist {finishing_player}")
+
+                            # Nächsten Spieler zum Zug bringen!
+                            SkyjoSpiel.next_turn()
+                            next_id = SkyjoSpiel.get_current_player().id
+                            for k in letzte_aktion:
+                                letzte_aktion[k] = True
+                            letzte_aktion[str(next_id)] = False
+                            print(f"[SERVER] Nach round_over: Nächster Spieler ist: {next_id}")
+                            broadcast({
+                                "type": "turn",
+                                "player": str(next_id),
+                                "name": spielerdaten[int(next_id)]["name"]
+                            })
+                        else:
+                            players_finished.add(str(sid))
+
+                        # Prüfe, ob jetzt alle Spieler einmal dran waren (alle im Set)
+                        if len(players_finished) == len(spielerdaten):
+                            print("[SERVER] Alle Spieler haben nach round_over noch einen Zug gemacht. Runde ist vorbei.")
                             print("[SERVER] Round is over")
                             if rounds_left <= 0:
                                 print("[SERVER] no mor rounds left")
@@ -296,6 +320,8 @@ def client_thread(conn, sid):
                                     roundisOver = False
                                     rounds_left = 0
                                     rounds = 0
+                                    finishing_player = None
+                                    players_finished = set()
                                     break  # Thread verlassen, KEINE neue Runde mehr!
                                 else:
                                     # Es gibt noch weitere Runden
@@ -319,6 +345,10 @@ def client_thread(conn, sid):
                                             "discard_pile": SkyjoSpiel.discard_pile,
                                         }).encode("utf-8") + b"\n")
                                     roundisOver = False
+                                    finishing_player = None
+                                    players_finished = set()
+                        else:
+                            print(f"[SERVER] Spieler {sid} hat round_over gesendet, warten auf weitere Spieler: {players_finished}")
 
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
