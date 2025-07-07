@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     # Lobby-Hintergrund
     try:
-        lobby_img = ImageTk.PhotoImage(Image.open("Lobby.png"))
+        lobby_img = ImageTk.PhotoImage(Image.open("assets/Lobby.png"))
         bg_label = tk.Label(root, image=lobby_img)
         bg_label.place(relwidth=1, relheight=1)
         bg_label.lower()  # ganz nach unten

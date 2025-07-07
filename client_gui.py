@@ -3,9 +3,14 @@ import tkinter as tk
 from tkinter import simpledialog, PhotoImage
 from Server_Client import NetworkClient
 import time
+from PIL import Image, ImageTk
 
 PORT = 65435
 
+def init_image(image_path, width=60, height=90):
+    image = Image.open(image_path)
+    image = image.resize((width, height))
+    return ImageTk.PhotoImage(image)
 
 class GameGUI:
     def __init__(self, root, server_ip, server_port):
@@ -13,9 +18,14 @@ class GameGUI:
         self.root.title("Skyjo Client")
         self.root.geometry("700x400")
 
+        self.images = {}  # Karten
+        for i in range(-2, 13):
+            self.images[i] = init_image(f"assets/card_{i}.png")
+        self.images["?"] = init_image("assets/card_back.png")
+
         # Load images
-        self.background_image_initial = PhotoImage(file="Spielhintergrund.png")
-        self.background_image_connected = PhotoImage(file="Lobby.png")
+        self.background_image_initial = PhotoImage(file="assets/Spielhintergrund.png")
+        self.background_image_connected = PhotoImage(file="assets/Lobby.png")
 
         # Create a label to display the background image
         self.background_label = tk.Label(self.root, image=self.background_image_initial)
@@ -53,16 +63,16 @@ class GameGUI:
         for i in range(3):                                                                  # Zeilen
             for j in range(4):                                                              # Spalten
                 idx = i * 4 + j                                                             # Indexberechnung
-                btn = tk.Button(self.root, text="?", width=6, state=tk.DISABLED,            # Erstellt Karte als Button mit "?"
+                btn = tk.Button(self.root, text="?", state=tk.DISABLED,            # Erstellt Karte als Button mit "?"
                                 command=lambda idx=idx: self.reveal_card(idx))
                 btn.grid(row=i, column=j, padx=5, pady=5)                                   # Platziert Button im Grid
                 self.card_buttons.append(btn)                                               # Fügt aktuellen Button der Liste hinzu
 
-        deck_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
+        deck_button = tk.Button(self.root, text="?", state=tk.DISABLED, command=self.deck_draw_card)      # Platziert Label des Kartenstappel im Grid
         deck_button.grid(row=1, column=5, padx=5, pady=5)                                # Platziert Button im Grid
         self.piles.append(deck_button)
 
-        discard_pile_button = tk.Button(self.root, text="?", width=6, state=tk.DISABLED, command=self.discard_pile_draw)      # Platziert Label des Kartenstappel im Grid
+        discard_pile_button = tk.Button(self.root, text="?", state=tk.DISABLED, command=self.discard_pile_draw)      # Platziert Label des Kartenstappel im Grid
         discard_pile_button.grid(row=2, column=5, padx=5, pady=5)
         self.piles.append(discard_pile_button)
 
@@ -245,7 +255,8 @@ class GameGUI:
         # print(f"[DEBUG] update_gui: is_my_turn={self.is_my_turn}, revealed={self.revealed}")
         for i, btn in enumerate(self.card_buttons):
             val = self.hand[i] if self.revealed[i] else "?"
-            btn.config(text=val)
+
+            btn.config(text=val, image=self.images.get(val, self.images["?"]))  # Zeigt die Karte an, wenn sie aufgedeckt ist
 
             # Nur Buttons aktivieren, wenn Spieler am Zug ist und Karte nicht aufgedeckt wurde
             if self.is_my_turn and self.hand is not None:
@@ -257,10 +268,10 @@ class GameGUI:
                 btn.config(state=tk.DISABLED)
                 btn.config(text="X")  # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
 
-        if self.is_my_turn and self.draw_count < 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        if self.is_my_turn and self.draw_count < 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
-        elif self.is_my_turn and self.draw_count >= 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        elif self.is_my_turn and self.draw_count >= 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.DISABLED)
             discard_pile_button.config(state=tk.NORMAL)
         else:
@@ -271,6 +282,12 @@ class GameGUI:
 
         self.score.config(text=f"Deine Punkte: {self.count_score()}")
         self.check_for_end()  # Überprüft, ob das Spiel zu Ende ist
+
+        deck_button.config(image=self.images["?"])  # Zeigt das Bild der Karte an, wenn sie aufgedeckt ist
+        discard_pile_button.config(image=self.images.get(self.discard_pile_top, self.images["?"]))  # Zeigt das Bild der
+
+        self.count_score()
+
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
