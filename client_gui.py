@@ -139,6 +139,17 @@ class GameGUI:
 
         elif msg_type == "new_round":
             self.status_label.config(text="Es beginnt eine neue Runde!")
+            if not all(self.revealed):
+                # Nicht alle Karten aufgedeckt → alle aufdecken und Punkte berechnen
+                round_score = sum(val for val in self.hand if val != 13)  # zähle alle Karten außer „X“
+                self.score_overall += round_score
+                self.score.config(text=f"Deine Punkte: {self.score_overall}")
+                for i, btn in enumerate(self.card_buttons):
+                    if self.hand[i] != 13:
+                        val = self.hand[i]
+                        btn.config(text=val)
+                    else:
+                        btn.config(text="X")
             time.sleep(5)
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
@@ -213,9 +224,21 @@ class GameGUI:
 
         elif msg_type == "game_over":                                                      # Wenn Runde zu Ende ist, wird der Spielername und die Punkte angezeigt
             print("[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen.")
+            if not all(self.revealed):
+                # Nicht alle Karten aufgedeckt → alle aufdecken und Punkte berechnen
+                round_score = sum(val for val in self.hand if val != 13)  # zähle alle Karten außer „X“
+                self.score_overall += round_score
+                self.score.config(text=f"Deine Punkte: {self.score_overall}")
+                for i, btn in enumerate(self.card_buttons):
+                    if self.hand[i] != 13:
+                        val = self.hand[i]
+                        btn.config(text=val)
+                    else:
+                        btn.config(text="X")
+            time.sleep(5)
             self.statusGame = False
             self.status_label.config(text="Spiel beendet!")
-            self.root.after(6000, self.root.destroy)
+            self.root.after(1000, self.root.destroy)
 
     def update_gui(self):
         deck_button, discard_pile_button = self.piles                                                                  # Gibt die Kartenwerte an, falls aufgedeckt und aktiviert die Buttons wenn man dran ist
@@ -282,3 +305,4 @@ class GameGUI:
             print(f"[DEBUG] Spieler {self.player_id} hat alle Karten aufgedeckt – Spielende.")
             self.score_overall = self.count_score()
             self.score.config(text=f"Deine Punkte: {self.score_overall}")
+            self.status_label.config(text="DU hast alle Karten aufgedeckt, deine Runde ist vorbei")
