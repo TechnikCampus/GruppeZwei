@@ -111,6 +111,7 @@ class GameGUI:
         self.revealed[idx] = True
         self.update_gui()
         self.network.send("reveal_card", {"data": {"index": idx}})
+        self.start_count += 1
 
     def handle_server_message(self, message):                                               # Methode zum Empfangen vom Server
         msg_type = message.get("type")                                                      # speichert Typ und Daten der Nachricht ab
@@ -166,7 +167,6 @@ class GameGUI:
                 self.revealed[idx] = True
                 # print(f"[DEBUG] Karte {idx} wurde aufgedeckt von Spieler {player}")
             self.update_gui()
-            self.start_count += 1
 
         elif msg_type == "card_drawn":                                                      # Wenn neue Karte gezogem wird dann wird diese Karte der Hand übergeben
             card = data.get("card")
