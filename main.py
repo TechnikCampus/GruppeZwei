@@ -13,6 +13,7 @@ config = {
     "anzahl_runden": 1
 }
 
+
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -25,14 +26,16 @@ def get_local_ip():
         s.close()
     return IP
 
+
 def start_host():
     try:
         spieler = simpledialog.askinteger("Einstellungen", "Wie viele Spieler?")
-        runden = simpledialog.askinteger("Einstellungen", "Wie viele Spiele?")
+        runden = simpledialog.askinteger("Einstellungen", "Wie viele Runden?")
         if not spieler or not runden:
             raise ValueError("Ungültige Eingabe")
         config["anzahl_spieler"] = spieler
         config["anzahl_runden"] = runden
+
     except:
         messagebox.showerror("Fehler", "Abbruch wegen ungültiger Eingabe.")
         return
@@ -46,6 +49,7 @@ def start_host():
     app = GameGUI(gui_root, "localhost", PORT)
     gui_root.mainloop()
 
+
 def start_client():
     ip = simpledialog.askstring("Client", "Gib die IP-Adresse des Hosts ein:")
     if ip:
@@ -54,10 +58,13 @@ def start_client():
         app = GameGUI(gui_root, ip, PORT)
         gui_root.mainloop()
 
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Skyjo starten")
-    root.geometry("400x300")
+    root.geometry("700x400")
+    for col in range(6):
+        root.grid_columnconfigure(col, minsize=80)
     root.resizable(False, False)
 
     # Lobby-Hintergrund

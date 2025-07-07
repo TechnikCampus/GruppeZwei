@@ -4,10 +4,10 @@ import json
 from SkyjoGame import SkyjoGame
 from class_player import Player
 from networkClientClass import NetworkClient
+import time
 
 # ==== Konfiguration & Spielstatus ====
 PORT = 65435
-switching_cards = False
 
 spielerdaten = {}
 letzte_aktion = {}
@@ -15,9 +15,15 @@ spiel_lock = threading.Lock()
 SkyjoSpiel = SkyjoGame()
 
 config = {
-    "anzahl_spieler": 2,
+    "anzahl_spieler": 1,
     "anzahl_runden": 1
 }
+
+switching_cards = False
+turns_left = 0
+roundisOver = False
+rounds = 0
+finishingPlayer = 9
 
 
 def broadcast(message, exclude=None):
@@ -77,7 +83,7 @@ def spiel_starten():
 
 # ==== Server-Thread pro Client ====
 def client_thread(conn, sid):
-    global switching_cards
+    global switching_cards, turns_left, roundisOver, rounds, finishingPlayer
     print(f"[SERVER] Spieler {sid} verbunden.")
 
     buffer = b""
@@ -102,8 +108,50 @@ def client_thread(conn, sid):
 
                     elif (typ == "reveal_card"):
                         current_player = SkyjoSpiel.get_current_player()
-                        print(f"[DEBUG] Aktueller Spieler laut Server: {current_player.id if current_player else 'None'} | Aktuell anfragender: {sid}")
-                        print(f"[DEBUG] letzte_aktion vor Prüfung: {letzte_aktion}")
+                        # print(f"[DEBUG] Aktueller Spieler laut Server: {current_player.id if current_player else 'None'} | Aktuell anfragender: {sid}")
+                        # print(f"[DEBUG] letzte_aktion vor Prüfung: {letzte_aktion}")
+
+                        if roundisOver and (len(spielerdaten) == 1 or SkyjoSpiel.get_current_player().id != finishingPlayer):
+
+                            turns_left -= 1
+                            if turns_left <= 0:
+                                print("[SERVER] no mor rounds left")
+                                if rounds <= 0:
+                                    print("[SERVER] Sende game_over an alle Clients")
+                                    broadcast({"type": "game_over"})
+                                    print("[SERVER] game_over gesendet")
+                                    time.sleep(5)
+                                    with spiel_lock:
+                                        spielerdaten.clear()
+                                    # Kontrollvariablen zurücksetzen
+                                    roundisOver = False
+                                    turns_left = 0
+                                    rounds = 0
+                                    break  # Thread verlassen, KEINE neue Runde mehr!
+                                else:
+                                    # Es gibt noch weitere Runden
+                                    turns_left = config["anzahl_spieler"]
+                                    print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
+                                    SkyjoSpiel.reset_game()
+                                    SkyjoSpiel.initialize_deck()
+                                    # Spielerobjekte neu anlegen!
+                                    SkyjoSpiel.players.clear()
+                                    for sid in spielerdaten:
+                                        spieler = Player(str(sid))
+                                        spielerdaten[sid]["spieler"] = spieler
+                                        SkyjoSpiel.add_player(spieler)
+                                    SkyjoSpiel.deal_initial_cards()
+                                    for sid in spielerdaten:
+                                        hand = spielerdaten[sid]["spieler"].hand
+                                        spielerdaten[sid]["conn"].sendall(json.dumps({
+                                            "type": "new_round",
+                                            "player_id": sid,
+                                            "hand": hand,
+                                            "discard_pile": SkyjoSpiel.discard_pile,
+                                        }).encode("utf-8") + b"\n")
+                                    roundisOver = False
+                                    finishingPlayer = 9
+
                         if current_player is None or current_player.id != str(sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
                             continue
@@ -145,7 +193,7 @@ def client_thread(conn, sid):
                             for k in letzte_aktion:
                                 letzte_aktion[k] = True
                             letzte_aktion[str(next_id)] = False
-                            print(f"[DEBUG] letzte_aktion nach Spielerwechsel: {letzte_aktion}")
+                            # print(f"[DEBUG] letzte_aktion nach Spielerwechsel: {letzte_aktion}")
                             broadcast({
                                 "type": "turn",
                                 "player": str(next_id),
@@ -189,7 +237,7 @@ def client_thread(conn, sid):
 
                                 # Merke: Spieler hat in diesem Zug bereits gehandelt
                                 letzte_aktion[str(sid)] = True
-                                print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion} \n")
+                                # print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion} \n")
 
                                 # Nachricht an alle Clients
                                 broadcast({
@@ -198,13 +246,6 @@ def client_thread(conn, sid):
                                     "player": sid
                                 })
 
-                                # if SkyjoSpiel.check_for_end(spieler):
-                                    # print(f"[SERVER] Spieler {sid} hat alle Karten aufgedeckt – Spielende.")
-                                    # broadcast({
-                                    #     "type": "game_over",
-                                    #     "winner": sid
-                                    # })
-                                # else:
                                 SkyjoSpiel.next_turn()
                                 next_id = SkyjoSpiel.get_current_player().id
                                 print(f"[DEBUG] Nächster Spieler ist: {next_id}")
@@ -271,6 +312,19 @@ def client_thread(conn, sid):
                     elif typ == "discard_pile_draw":
                         switching_cards = True
 
+                    elif typ == "round_over":
+                        spieler = data.get("player", "?")
+                        print(f"{spieler} hat die Runde beendet")
+                        turns_left = len(spielerdaten) - 1
+                        if roundisOver is not True:
+                            rounds -= 1
+                        roundisOver = True
+                        finishingPlayer = spieler
+                        
+                        # Sofort prüfen, ob alle durch sind (besonders bei nur 1 Spieler)
+                        if turns_left <= 0:
+                            roundisOver = True
+
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
     except:
@@ -284,9 +338,12 @@ def client_thread(conn, sid):
 
 # ==== Haupt-Serverfunktion ====
 def server_starten(konfig):
-    print("[DEBUG] server_starten() wurde aufgerufen")
-    global config
+    # print("[DEBUG] server_starten() wurde aufgerufen")
+    global config, turns_left, rounds
     config = konfig
+
+    turns_left = config["anzahl_spieler"]
+    rounds = config["anzahl_runden"]
 
     SkyjoSpiel.reset_game()
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
