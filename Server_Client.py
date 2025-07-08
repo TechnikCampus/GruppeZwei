@@ -1,31 +1,32 @@
+# ==== Module & Abhängigkeiten ====
 import socket
 import threading
 import json
-from SkyjoGame import SkyjoGame
-from class_player import Player
-from networkClientClass import NetworkClient
+from SkyjoGame import SkyjoGame  # Spiellogik
+from class_player import Player  # Spielerklasse
+from networkClientClass import NetworkClient  # Netzwerk-Client (Client-Seite)
 import time
 
 # ==== Konfiguration & Spielstatus ====
-PORT = 65435
+PORT = 65435  # Port des Servers
 
-spielerdaten = {}
-letzte_aktion = {}
-spiel_lock = threading.Lock()
-SkyjoSpiel = SkyjoGame()
+spielerdaten = {}  # Speichert zu jedem Spieler: Verbindung, Name, Spielerobjekt
+letzte_aktion = {}  # Merkt sich, ob Spieler in dieser Runde schon etwas getan hat
+spiel_lock = threading.Lock()  # Für Thread-Synchronisation
+SkyjoSpiel = SkyjoGame()  # Initialisiere das Skyjo-Spielobjekt
 
 config = {
-    "anzahl_spieler": 1,
-    "anzahl_runden": 1
+    "anzahl_spieler": 1,  # Anzahl der Spieler
+    "anzahl_runden": 1    # Anzahl der Spielrunden
 }
 
-switching_cards = False
-turns_left = 0
-roundisOver = False
-rounds = 0
-finishingPlayer = 9
+switching_cards = False  # Wird true, wenn ein Spieler eine Karte tauscht
+turns_left = 0  # Wie viele Spieler müssen noch handeln nach Rundenschluss?
+roundisOver = False  # Ob die aktuelle Runde beendet wurde
+rounds = 0  # Anzahl verbleibender Runden
+finishingPlayer = 9  # Spieler, der die Runde beendet hat
 
-
+# ==== Nachricht an alle Clients senden ====
 def broadcast(message, exclude=None):
     raw = json.dumps(message).encode("utf-8") + b"\n"
     with spiel_lock:
@@ -37,8 +38,7 @@ def broadcast(message, exclude=None):
             except:
                 continue
 
-
-# ==== Spiellogik ====
+# ==== Spielrunde starten ====
 def spiel_starten():
     global letzte_aktion
 
@@ -49,12 +49,13 @@ def spiel_starten():
         with spiel_lock:
             SkyjoSpiel.players.clear()
             for sid in spielerdaten:
-                spieler = Player(str(sid))
+                spieler = Player(str(sid))  # Spielerobjekt erzeugen
                 spielerdaten[sid]["spieler"] = spieler
-                SkyjoSpiel.add_player(spieler)
+                SkyjoSpiel.add_player(spieler)  # Spieler dem Spiel hinzufügen
 
-        SkyjoSpiel.deal_initial_cards()
+        SkyjoSpiel.deal_initial_cards()  # Karten verteilen
 
+        # Starte das Spiel für jeden Spieler
         for sid in spielerdaten:
             hand = spielerdaten[sid]["spieler"].hand
             spielerdaten[sid]["conn"].sendall(json.dumps({
@@ -62,11 +63,9 @@ def spiel_starten():
                 "player_id": sid,
                 "hand": hand,
                 "discard_pile": SkyjoSpiel.discard_pile,
-
             }).encode("utf-8") + b"\n")
 
-        letzte_aktion = {str(sid): False for sid in spielerdaten}   # Reset letzte Aktion für alle Spieler
-        # Entferne alle int-Keys, falls noch vorhanden
+        letzte_aktion = {str(sid): False for sid in spielerdaten}  # Reset Aktionstracker
         for k in list(letzte_aktion.keys()):
             if isinstance(k, int):
                 del letzte_aktion[k]
@@ -74,14 +73,13 @@ def spiel_starten():
         SkyjoSpiel.started = True
         print("[SERVER] Spielrunde gestartet.")
 
-        # Ersten Spieler benachrichtigen
+        # Der erste Spieler ist am Zug
         broadcast({
             "type": "turn",
             "player": SkyjoSpiel.get_current_player().id
         })
 
-
-# ==== Server-Thread pro Client ====
+# ==== Server-Thread für jeden Client ====
 def client_thread(conn, sid):
     global switching_cards, turns_left, roundisOver, rounds, finishingPlayer
     print(f"[SERVER] Spieler {sid} verbunden.")
@@ -100,41 +98,39 @@ def client_thread(conn, sid):
                     typ = daten.get("type")
                     data = daten.get("data", {})
 
+                    # ==== Spieler tritt bei ====
                     if typ == "join":
                         print(f"[SERVER] Spieler {sid} beigetreten als {data.get('name', 'Spieler')}.")
                         spielerdaten[sid]["name"] = data.get("name", f"Spieler{sid}")
                         if len(spielerdaten) == config["anzahl_spieler"]:
                             threading.Thread(target=spiel_starten, daemon=True).start()
 
+                    # ==== Karte aufdecken ====
                     elif (typ == "reveal_card"):
                         current_player = SkyjoSpiel.get_current_player()
-                        # print(f"[DEBUG] Aktueller Spieler laut Server: {current_player.id if current_player else 'None'} | Aktuell anfragender: {sid}")
-                        # print(f"[DEBUG] letzte_aktion vor Prüfung: {letzte_aktion}")
 
+                        # Wenn Runde vorbei ist, aber nicht alle durch
                         if roundisOver and (len(spielerdaten) == 1 or SkyjoSpiel.get_current_player().id != finishingPlayer):
 
                             turns_left -= 1
                             if turns_left <= 0:
                                 print("[SERVER] no mor rounds left")
                                 if rounds <= 0:
-                                    print("[SERVER] Sende game_over an alle Clients")
+                                    # Spiel vorbei
                                     broadcast({"type": "game_over"})
-                                    print("[SERVER] game_over gesendet")
                                     time.sleep(5)
                                     with spiel_lock:
                                         spielerdaten.clear()
-                                    # Kontrollvariablen zurücksetzen
                                     roundisOver = False
                                     turns_left = 0
                                     rounds = 0
-                                    break  # Thread verlassen, KEINE neue Runde mehr!
+                                    break
                                 else:
-                                    # Es gibt noch weitere Runden
+                                    # Nächste Runde vorbereiten
                                     turns_left = config["anzahl_spieler"]
                                     print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
                                     SkyjoSpiel.reset_game()
                                     SkyjoSpiel.initialize_deck()
-                                    # Spielerobjekte neu anlegen!
                                     SkyjoSpiel.players.clear()
                                     for sid in spielerdaten:
                                         spieler = Player(str(sid))
@@ -156,7 +152,7 @@ def client_thread(conn, sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
                             continue
 
-                        # Nur eine Aktion pro Zug erlauben
+                        # Spieler hat bereits aufgedeckt
                         if letzte_aktion.get(str(sid), False):
                             print(f"[SERVER] Spieler {sid} hat in diesem Zug bereits eine Karte aufgedeckt.")
                             continue
@@ -166,6 +162,7 @@ def client_thread(conn, sid):
                         j = index % 4
                         spieler = spielerdaten[sid]["spieler"]
 
+                        # ==== Karten tauschen ====
                         if switching_cards:
                             switching_cards = False
                             temp = spieler.hand[index]
@@ -193,14 +190,15 @@ def client_thread(conn, sid):
                             for k in letzte_aktion:
                                 letzte_aktion[k] = True
                             letzte_aktion[str(next_id)] = False
-                            # print(f"[DEBUG] letzte_aktion nach Spielerwechsel: {letzte_aktion}")
+
                             broadcast({
                                 "type": "turn",
                                 "player": str(next_id),
                                 "name": spielerdaten[sid]["name"]
                             })
 
-                            for i in range(4):  # 3 Zeilen
+                            # Dreierprüfung in Spalten
+                            for i in range(4):
                                 idx1 = i
                                 idx2 = i + 4
                                 idx3 = i + 8
@@ -229,17 +227,14 @@ def client_thread(conn, sid):
                                         "card": temp
                                     }).encode("utf-8") + b"\n")
 
+                        # ==== Karte einfach aufdecken ====
                         else:
-
                             if not spieler.is_card_revealed(i, j):
                                 wert = spieler.reveal_card(i, j)
                                 print(f"[SERVER] Spieler {sid} deckt Karte {i},{j} = {wert} auf")
 
-                                # Merke: Spieler hat in diesem Zug bereits gehandelt
                                 letzte_aktion[str(sid)] = True
-                                # print(f"[DEBUG] letzte_aktion nach Aufdecken: {letzte_aktion} \n")
 
-                                # Nachricht an alle Clients
                                 broadcast({
                                     "type": "reveal_result",
                                     "data": {"index": i * 4 + j},
@@ -259,7 +254,8 @@ def client_thread(conn, sid):
                                     "name": spielerdaten[sid]["name"]
                                 })
 
-                            for i in range(4):  # 3 Zeilen
+                            # Dreierprüfung erneut
+                            for i in range(4):
                                 idx1 = i
                                 idx2 = i + 4
                                 idx3 = i + 8
@@ -288,6 +284,7 @@ def client_thread(conn, sid):
                                         "card": temp
                                     }).encode("utf-8") + b"\n")
 
+                    # ==== Chatnachricht senden ====
                     elif typ == "chat":
                         broadcast({
                             "type": "chat",
@@ -295,6 +292,7 @@ def client_thread(conn, sid):
                             "text": data.get("text", "")
                         })
 
+                    # ==== Karte vom Deck ziehen ====
                     elif typ == "deck_draw_card":
                         neue_karte = SkyjoSpiel.draw_new_card() if SkyjoSpiel.deck else None
                         if neue_karte:
@@ -309,9 +307,11 @@ def client_thread(conn, sid):
                                 "card": neue_karte
                             })
 
+                    # ==== Karte vom Ablagestapel ziehen (für Tausch) ====
                     elif typ == "discard_pile_draw":
                         switching_cards = True
 
+                    # ==== Spieler beendet Runde ====
                     elif typ == "round_over":
                         spieler = data.get("player", "?")
                         print(f"{spieler} hat die Runde beendet")
@@ -321,7 +321,6 @@ def client_thread(conn, sid):
                         roundisOver = True
                         finishingPlayer = spieler
                         
-                        # Sofort prüfen, ob alle durch sind (besonders bei nur 1 Spieler)
                         if turns_left <= 0:
                             roundisOver = True
 
@@ -335,10 +334,8 @@ def client_thread(conn, sid):
                 del spielerdaten[sid]
         conn.close()
 
-
-# ==== Haupt-Serverfunktion ====
+# ==== Serverstart ====
 def server_starten(konfig):
-    # print("[DEBUG] server_starten() wurde aufgerufen")
     global config, turns_left, rounds
     config = konfig
 
@@ -363,7 +360,8 @@ def server_starten(konfig):
         sid += 1
 
 
-# Verbesserte keyboard_input.py mit GUI-Markierung, Netzwerkverbindung und Event-Unterstützung
+# ==== Verbesserte keyboard_input.py ====
+# Behandelt Tasteneingaben für die GUI (z. B. Karten auswählen, tauschen etc.)
 import tkinter as tk
 from tkinter import messagebox
 
@@ -371,73 +369,52 @@ class KeyboardInputHandler:
     def __init__(self, root, network_client, card_buttons):
         self.root = root
         self.network = network_client
-        self.card_buttons = card_buttons  # Referenz auf Button-Matrix (3x4)
-        self.selected_row = 0
-        self.selected_col = 0
+        self.card_buttons = card_buttons  # Referenz auf die 3x4 Button-Matrix für die Karten
+        self.selected_row = 0  # Aktuell ausgewählte Zeile (für Steuerung mit Pfeiltasten)
+        self.selected_col = 0  # Aktuell ausgewählte Spalte
 
-        # Tastenzuweisungen
-        root.bind("<KeyPress-z>", self.draw_card)
-        root.bind("<KeyPress-a>", self.discard_card)
-        root.bind("<KeyPress-t>", self.swap_card)
-        root.bind("<KeyPress-w>", self.pass_card)
-        root.bind("<KeyPress-r>", self.set_ready)
-        root.bind("<KeyPress-e>", self.show_cards)
-        root.bind("<Left>", self.move_left)
-        root.bind("<Right>", self.move_right)
-        root.bind("<Up>", self.move_up)
-        root.bind("<Down>", self.move_down)
-        root.bind("<Return>", self.reveal_card)
-        root.bind("<Escape>", self.cancel_action)
-        root.bind("<KeyPress-h>", self.show_help)
-        root.bind("<KeyPress-q>", self.quit_game)
+        # Tastaturbelegung (Key Bindings)
+        root.bind("<KeyPress-z>", self.draw_card)        # Z = Karte vom Deck ziehen
+        root.bind("<KeyPress-a>", self.discard_card)     # A = Karte ablegen
+        root.bind("<KeyPress-t>", self.swap_card)        # T = Karte tauschen
+        root.bind("<KeyPress-w>", self.pass_card)        # W = weitergeben (nicht aktiv?)
+        root.bind("<KeyPress-r>", self.set_ready)        # R = bereit
+        root.bind("<KeyPress-e>", self.show_cards)       # E = Karten anzeigen
+        root.bind("<Left>", self.move_left)              # Pfeil links = Auswahl bewegen
+        root.bind("<Right>", self.move_right)            # Pfeil rechts
+        root.bind("<Up>", self.move_up)                  # Pfeil oben
+        root.bind("<Down>", self.move_down)              # Pfeil unten
+        root.bind("<Return>", self.reveal_card)          # ENTER = Karte aufdecken
+        root.bind("<Escape>", self.cancel_action)        # ESC = Aktion abbrechen
+        root.bind("<KeyPress-h>", self.show_help)        # H = Hilfe anzeigen
+        root.bind("<KeyPress-q>", self.quit_game)        # Q = Spiel verlassen
 
-        self.update_selection_highlight()
+        self.update_selection_highlight()  # Visuelle Markierung der Auswahl
 
     def send(self, msg_type, data=None):
+        # Sendet Nachricht an Server, wenn Netzwerkverbindung aktiv ist
         if self.network and self.network.is_connected():
             self.network.send(msg_type, data or {})
 
-    def draw_card(self, event=None):
-        self.send("draw_card")
+    # ==== Steuerfunktionen ====
+    def draw_card(self, event=None): self.send("draw_card")
+    def discard_card(self, event=None): self.send("discard_card", {"row": self.selected_row, "col": self.selected_col})
+    def swap_card(self, event=None): self.send("swap_card", {"row": self.selected_row, "col": self.selected_col})
+    def pass_card(self, event=None): self.send("pass_card")
+    def set_ready(self, event=None): self.send("ready")
+    def show_cards(self, event=None): self.send("show_cards")
+    def reveal_card(self, event=None): self.send("reveal_card", {"row": self.selected_row, "col": self.selected_col})
+    def cancel_action(self, event=None): self.send("cancel_action")
+    def quit_game(self, event=None): self.send("quit"); self.root.quit()
 
-    def discard_card(self, event=None):
-        self.send("discard_card", {"row": self.selected_row, "col": self.selected_col})
-
-    def swap_card(self, event=None):
-        self.send("swap_card", {"row": self.selected_row, "col": self.selected_col})
-
-    def pass_card(self, event=None):
-        self.send("pass_card")
-
-    def set_ready(self, event=None):
-        self.send("ready")
-
-    def show_cards(self, event=None):
-        self.send("show_cards")
-
-    def reveal_card(self, event=None):
-        self.send("reveal_card", {"row": self.selected_row, "col": self.selected_col})
-
-    def cancel_action(self, event=None):
-        self.send("cancel_action")
-
-    def move_left(self, event=None):
-        self.selected_col = (self.selected_col - 1) % 4
-        self.update_selection_highlight()
-
-    def move_right(self, event=None):
-        self.selected_col = (self.selected_col + 1) % 4
-        self.update_selection_highlight()
-
-    def move_up(self, event=None):
-        self.selected_row = (self.selected_row - 1) % 3
-        self.update_selection_highlight()
-
-    def move_down(self, event=None):
-        self.selected_row = (self.selected_row + 1) % 3
-        self.update_selection_highlight()
+    # ==== Bewegung mit Pfeiltasten ====
+    def move_left(self, event=None): self.selected_col = (self.selected_col - 1) % 4; self.update_selection_highlight()
+    def move_right(self, event=None): self.selected_col = (self.selected_col + 1) % 4; self.update_selection_highlight()
+    def move_up(self, event=None): self.selected_row = (self.selected_row - 1) % 3; self.update_selection_highlight()
+    def move_down(self, event=None): self.selected_row = (self.selected_row + 1) % 3; self.update_selection_highlight()
 
     def update_selection_highlight(self):
+        # Hebt die ausgewählte Karte visuell hervor
         for i in range(3):
             for j in range(4):
                 btn = self.card_buttons[i][j]
@@ -447,32 +424,37 @@ class KeyboardInputHandler:
                     btn.config(relief=tk.RAISED, borderwidth=1)
 
     def show_help(self, event=None):
+        # Zeigt Hilfe-Fenster mit Tastenkombinationen
         messagebox.showinfo("Hilfe", "Tastenkürzel:\nZ=ziehen\nA=ablegen\nT=tauschen\nW=weitergeben\nR=bereit\nE=zeigen\nEnter=aufdecken\nEsc=abbrechen\nQ=beenden")
 
-    def quit_game(self, event=None):
-        self.send("quit")
-        self.root.quit()
 
 
-# Integration in GameGUI
+# ==== Haupt-GUI für den Client ====
 class GameGUI:
     def __init__(self, root, server_ip="127.0.0.1", server_port=5000):
         self.root = root
-        self.root.title("Skyjo Client")
-        self.network = NetworkClient(server_ip, server_port, self.handle_server_message)
+        self.root.title("Skyjo Client")  # Titel des Fensters
+        self.network = NetworkClient(server_ip, server_port, self.handle_server_message)  # Netzwerkverbindung zum Server
 
-        self.player = None
-        self.current_player = None
+        self.player = None               # Spieler-ID (eigener Spieler)
+        self.current_player = None      # Wer ist aktuell dran?
 
+        # 3x4 Karten-Buttons für die Hand (12 Karten)
         self.card_buttons = [[None for _ in range(4)] for _ in range(3)]
-        self.chat_entry = tk.Entry(root, width=40)
-        self.chat_button = tk.Button(root, text="Senden", command=self.send_chat_message)
-        self.chat_display = tk.Text(root, height=10, width=60, state=tk.DISABLED)
-        self.status_label = tk.Label(root, text="Status")
-        self.timer_label = tk.Label(root, text="Zug-Timer: -")
-        self.timer_active = False
 
-        self.build_gui()
-        self.keyboard_handler = KeyboardInputHandler(self.root, self.network, self.card_buttons)  # <--- Integration
-        self.prompt_player_name()
-        self.root.after(100, self.connect_to_server)
+        # GUI-Komponenten für Chat und Statusanzeige
+        self.chat_entry = tk.Entry(root, width=40)  # Texteingabefeld für Chat
+        self.chat_button = tk.Button(root, text="Senden", command=self.send_chat_message)  # Sendebutton
+        self.chat_display = tk.Text(root, height=10, width=60, state=tk.DISABLED)  # Chatverlauf
+        self.status_label = tk.Label(root, text="Status")  # Statusanzeige (z.B. wer ist dran)
+        self.timer_label = tk.Label(root, text="Zug-Timer: -")  # Optionaler Timer
+
+        self.timer_active = False  # Steuerung für Timer (falls aktiviert)
+
+        self.build_gui()  # Erzeugt das Fensterlayout (Buttons, Labels, etc.)
+
+        # Tastatursteuerung aktivieren
+        self.keyboard_handler = KeyboardInputHandler(self.root, self.network, self.card_buttons)
+
+        self.prompt_player_name()  # Fragt den Namen des Spielers ab
+        self.root.after(100, self.connect_to_server)  # Verbindungsversuch nach kurzer Verzögerung
