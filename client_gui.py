@@ -169,10 +169,10 @@ class GameGUI:
                 self.score.config(text=f"Deine Punkte: {self.score_overall}")
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
-                        val = self.hand[i]
-                        btn.config(text=val)
+                        val = self.hand[i] 
+                        btn.config(text=val, image=self.images.get(val, self.images["?"]))
                     else:
-                        btn.config(text="X")
+                        btn.config(image=self.images["?"])
             time.sleep(5)
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
@@ -246,10 +246,10 @@ class GameGUI:
                 self.score.config(text=f"Deine Punkte: {self.score_overall}")
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
-                        val = self.hand[i]
-                        btn.config(text=val)
+                        val = self.hand[i] 
+                        btn.config(text=val, image=self.images.get(val, self.images["?"]))
                     else:
-                        btn.config(text="X")
+                        btn.config(image=self.images["?"])
 
             time.sleep(5)
             self.statusGame = False
@@ -272,7 +272,7 @@ class GameGUI:
                 btn.config(state=tk.DISABLED)
                 btn.config(text="X")                   # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
 
-        if sself.is_my_turn and self.draw_count < 1 and self.start_count > 1:         # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        if self.is_my_turn and self.draw_count < 1 and self.start_count > 1:         # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
         elif self.is_my_turn and self.draw_count >= 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
@@ -288,8 +288,6 @@ class GameGUI:
 
         deck_button.config(image=self.images["?"])  # Zeigt das Bild der Karte an, wenn sie aufgedeckt ist
         discard_pile_button.config(image=self.images.get(self.discard_pile_top, self.images["?"]))  # Zeigt das Bild der
-
-        self.count_score()
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
