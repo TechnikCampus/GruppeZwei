@@ -272,10 +272,10 @@ class GameGUI:
                 btn.config(state=tk.DISABLED)
                 btn.config(text="X")                   # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
 
-        if self.is_my_turn and self.draw_count < 1:         # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        if sself.is_my_turn and self.draw_count < 1 and self.start_count > 1:         # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
-        elif self.is_my_turn and self.draw_count >= 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        elif self.is_my_turn and self.draw_count >= 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.DISABLED)
             discard_pile_button.config(state=tk.NORMAL)
         else:
