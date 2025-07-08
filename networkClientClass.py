@@ -2,6 +2,7 @@ import socket
 import threading
 import json
 
+
 class NetworkClient:
     def __init__(self, server_ip, server_port, on_message, on_connected=None):
         self.server_ip = server_ip                          # IP-Adresse des Servers
@@ -54,4 +55,3 @@ class NetworkClient:
             except Exception as e:
                 print(f"[ERROR] Empfangsfehler: {e}")  # Netzwerkfehler beim Empfangen
                 break
-

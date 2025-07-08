@@ -15,6 +15,7 @@ config = {
     "anzahl_runden": 1    # Standardanzahl Runden
 }
 
+
 # ==== Lokale IP-Adresse des Hosts ermitteln ====
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -27,6 +28,7 @@ def get_local_ip():
     finally:
         s.close()
     return IP
+
 
 # ==== Spiel als Host starten ====
 def start_host():
@@ -62,6 +64,7 @@ def start_host():
     app = GameGUI(gui_root, "localhost", PORT)
     gui_root.mainloop()
 
+
 # ==== Als Client einem Spiel beitreten ====
 def start_client():
     ip = simpledialog.askstring("Client", "Gib die IP-Adresse des Hosts ein:")
@@ -70,6 +73,7 @@ def start_client():
         gui_root = tk.Tk()
         app = GameGUI(gui_root, ip, PORT)  # Mit Host verbinden
         gui_root.mainloop()
+
 
 # ==== Hauptfenster: Auswahl Host oder Client ====
 if __name__ == "__main__":
