@@ -1,6 +1,7 @@
 import random
 from class_player import Player
 
+
 class SkyjoGame:
     def __init__(self):  # Initialisierung der SkyjoGame-Klasse
         self.players = []             # Liste aller Spieler im Spiel
@@ -96,4 +97,3 @@ class SkyjoGame:
         if player.all_cards_revealed():
             return True
         return False
-

@@ -6,17 +6,19 @@ from PIL import Image, ImageTk
 
 PORT = 65435  # Standardport für die Verbindung zum Server
 
+
 # Lädt und skaliert ein Bild (z. B. Kartenbild)
 def init_image(image_path, width=60, height=90):
     image = Image.open(image_path)
     image = image.resize((width, height))
     return ImageTk.PhotoImage(image)
 
+
 class GameGUI:
     def __init__(self, root, server_ip, server_port):
         self.root = root
         self.root.title("Skyjo Client")
-        self.root.geometry("700x400")
+        self.root.geometry("700x600")
 
         # Kartenbilder vorbereiten
         self.images = {}
@@ -122,11 +124,10 @@ class GameGUI:
             self.chat_entry.delete(0, tk.END)
 
     def reveal_card(self, idx):
-           if not self.is_my_turn:                                                            
-        # Karte aufdecken (nur wenn am Zug)
-            self.status_label.config(text="Nicht dein Zug!")                                #Anmerkung: ist bestimmt eleganter zu lösen!
+        if not self.is_my_turn:                                                            # Karte aufdecken (nur wenn am Zug)
+            self.status_label.config(text="Nicht dein Zug!")
             # print("[DEBUG] Karte konnte nicht aufgedeckt werden – nicht dein Zug!")
-        return
+            return
 
         print(f"[DEBUG] Aufdecken von Karte {idx}")         # Falls beide Abfragen nein sind, wir die Karte aufgedeckt und an den Server weitergeleitet
 
@@ -145,9 +146,9 @@ class GameGUI:
             self.player_id = str(data.get("player_id"))
             self.status_label.config(text="Spiel gestartet")
             self.discard_pile = data.get("discard_pile", "?")
-            
-            if self.discard_pile:   
-             self.discard_pile_top = self.discard_pile[-1]
+
+            if self.discard_pile:
+                self.discard_pile_top = self.discard_pile[-1]
             else:
                 self.discard_pile_top = "?"
 
@@ -168,10 +169,10 @@ class GameGUI:
                 self.score.config(text=f"Deine Punkte: {self.score_overall}")
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
-                        val = self.hand[i]
-                        btn.config(text=val)
+                        val = self.hand[i] 
+                        btn.config(text=val, image=self.images.get(val, self.images["?"]))
                     else:
-                        btn.config(text="X")
+                        btn.config(image=self.images["?"])
             time.sleep(5)
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
@@ -193,7 +194,7 @@ class GameGUI:
             self.display_chat(data.get("sender", "?"), data.get("text", ""))
 
         elif msg_type == "reveal_result":                                   # Wenn eine Karte umgedreht wurde wird sich  der entsprechende Index geholt und geprüft ob idx ein gültiger Wert ist
-            idx = data.get("data", {}).get("index")                         #Anmerkung: muss man wahrscheinlich noch abfragen ob die jeweilige Karte schon umgedreht ist
+            idx = data.get("data", {}).get("index")
             player = message.get("player")
             if idx is not None:
                 self.revealed[idx] = True
@@ -245,11 +246,11 @@ class GameGUI:
                 self.score.config(text=f"Deine Punkte: {self.score_overall}")
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
-                        val = self.hand[i]
-                        btn.config(text=val)
+                        val = self.hand[i] 
+                        btn.config(text=val, image=self.images.get(val, self.images["?"]))
                     else:
-                        btn.config(text="X")
-                    
+                        btn.config(image=self.images["?"])
+
             time.sleep(5)
             self.statusGame = False
             self.status_label.config(text="Spiel beendet!")
@@ -271,10 +272,10 @@ class GameGUI:
                 btn.config(state=tk.DISABLED)
                 btn.config(text="X")                   # Zeigt X an, wenn diese Karte nicht mehr verfügbar ist
 
-        if self.is_my_turn and self.draw_count < 1:         # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        if self.is_my_turn and self.draw_count < 1 and self.start_count > 1:         # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.NORMAL)
             discard_pile_button.config(state=tk.NORMAL)
-         elif self.is_my_turn and self.draw_count >= 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
+        elif self.is_my_turn and self.draw_count >= 1 and self.start_count > 1:  # Abfrage ob Spieler am Zug ist und ob er schon eine Karte gezogen hat
             deck_button.config(state=tk.DISABLED)
             discard_pile_button.config(state=tk.NORMAL)
         else:
@@ -287,8 +288,6 @@ class GameGUI:
 
         deck_button.config(image=self.images["?"])  # Zeigt das Bild der Karte an, wenn sie aufgedeckt ist
         discard_pile_button.config(image=self.images.get(self.discard_pile_top, self.images["?"]))  # Zeigt das Bild der
-
-        self.count_score()
 
     def display_chat(self, sender, message):
         self.chat_display.config(state=tk.NORMAL)
