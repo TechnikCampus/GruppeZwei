@@ -176,6 +176,7 @@ class GameGUI:
             time.sleep(5)
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
+            nextPlayer = data.get("startPlayer", 0)
             self.status_label.config(text="Spiel gestartet")
             self.discard_pile = data.get("discard_pile", "?")
             if self.discard_pile:
@@ -185,6 +186,9 @@ class GameGUI:
             self.revealed = [False] * 12
             self.round_over_sent = False
             self.start_count = 0
+            #if nextPlayer == self.player_id:
+            #    self.is_my_turn = True
+            #else:
             self.is_my_turn = False
             self.draw_count = 0
             self.statusGame = True

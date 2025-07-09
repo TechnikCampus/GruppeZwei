@@ -142,6 +142,7 @@ def client_thread(conn, sid):
                                         spielerdaten[sid]["spieler"] = spieler
                                         SkyjoSpiel.add_player(spieler)
                                     SkyjoSpiel.deal_initial_cards()
+                                    nextPlayer = SkyjoSpiel.get_current_player().id
                                     for sid in spielerdaten:
                                         hand = spielerdaten[sid]["spieler"].hand
                                         spielerdaten[sid]["conn"].sendall(json.dumps({
@@ -149,9 +150,21 @@ def client_thread(conn, sid):
                                             "player_id": sid,
                                             "hand": hand,
                                             "discard_pile": SkyjoSpiel.discard_pile,
+                                            # "startPlayer": nextPlayer
                                         }).encode("utf-8") + b"\n")
                                     roundisOver = False
                                     finishingPlayer = 9
+                                    next_id = SkyjoSpiel.get_current_player().id
+                                    for k in letzte_aktion:
+                                        letzte_aktion[k] = True
+                                    letzte_aktion[str(next_id)] = False
+
+                                    broadcast({
+                                        "type": "turn",
+                                        "player": str(sid),
+                                        "name": spielerdaten[sid]["name"]
+                                    })
+
 
                         if current_player is None or current_player.id != str(sid):
                             print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
