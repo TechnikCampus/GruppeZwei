@@ -112,7 +112,7 @@ def client_thread(conn, sid):
 
                     # ==== Karte aufdecken ====
                     elif (typ == "reveal_card"):
-                        current_player = SkyjoSpiel.get_current_player()
+                        current_player = SkyjoSpiel.get_current_player().id
 
                         # Wenn Runde vorbei ist, aber nicht alle durch
                         if roundisOver and (len(spielerdaten) == 1 or SkyjoSpiel.get_current_player().id != finishingPlayer):
@@ -166,9 +166,9 @@ def client_thread(conn, sid):
                                     })
 
 
-                        if current_player is None or current_player.id != str(sid):
-                            print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
-                            continue
+                        if current_player is None or current_player != str(sid):
+                           print(f"[SERVER] Spieler {sid} ist NICHT am Zug – Aktion ignoriert.")
+                           continue
 
                         # Spieler hat bereits aufgedeckt
                         if letzte_aktion.get(str(sid), False):
