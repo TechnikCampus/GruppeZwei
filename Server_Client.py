@@ -288,10 +288,12 @@ def client_thread(conn, sid):
                         if roundisOver is not True:
                             rounds -= 1
                         roundisOver = True
-                        finishingPlayer = spieler
+                        if finishingPlayer == 9:
+                            finishingPlayer = spieler
                         
                         if turns_left <= 0:
                             roundisOver = True
+                            endRound()
 
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
@@ -330,12 +332,12 @@ def server_starten(konfig):
         sid += 1
 
 def endRound():
+    global roundisOver, turns_left, rounds, finishingPlayer, spielerdaten, SkyjoSpiel, letzte_aktion
 
-# Wenn Runde vorbei ist, aber nicht alle durch
     if roundisOver and (len(spielerdaten) == 1 or SkyjoSpiel.get_current_player().id != finishingPlayer):
         turns_left -= 1
         if turns_left <= 0:
-            print("[SERVER] no mor rounds left")
+            print("[SERVER] no more rounds left")
             if rounds <= 0:
                 # Spiel vorbei
                 broadcast({"type": "game_over"})
@@ -348,6 +350,7 @@ def endRound():
             else:
                 # Nächste Runde vorbereiten
                 turns_left = config["anzahl_spieler"]
+                rounds -= 1
                 print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
                 SkyjoSpiel.reset_game()
                 SkyjoSpiel.initialize_deck()
@@ -365,7 +368,6 @@ def endRound():
                         "player_id": sid,
                         "hand": hand,
                         "discard_pile": SkyjoSpiel.discard_pile,
-                        # "startPlayer": nextPlayer
                     }).encode("utf-8") + b"\n")
                 roundisOver = False
                 finishingPlayer = 9
@@ -375,6 +377,6 @@ def endRound():
                 letzte_aktion[str(next_id)] = False
                 broadcast({
                     "type": "turn",
-                    "player": str(sid),
-                    "name": spielerdaten[sid]["name"]
+                    "player": str(next_id),
+                    "name": spielerdaten[int(next_id)]["name"]
                 })

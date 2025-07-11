@@ -243,7 +243,8 @@ class GameGUI:
             self.update_gui()
 
         elif msg_type == "game_over":
-            print("[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen.")
+            print(f"[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen. Spieler: {self.player_id}")
+            self.status_label.config(text="Spiel beendet!")
             if not all(self.revealed):
                 round_score = sum(val for val in self.hand if val != 13)                             # Nicht alle Karten aufgedeckt → alle aufdecken und Punkte berechnen
                 self.score_overall += round_score
@@ -251,13 +252,12 @@ class GameGUI:
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
                         val = self.hand[i] 
-                        btn.config(text=val, image=self.images.get(val, self.images["?"]))
+                        btn.config(text=val, image=self.images.get(val, self.images["?"], state=tk.DISABLED))
                     else:
                         btn.config(image=self.images["?"])
 
             time.sleep(5)
             self.statusGame = False
-            self.status_label.config(text="Spiel beendet!")
             self.root.after(1000, self.root.destroy)
 
     def update_gui(self):
@@ -325,3 +325,5 @@ class GameGUI:
             self.score_overall = self.count_score()
             self.score.config(text=f"Deine Punkte: {self.score_overall}")
             self.status_label.config(text="DU hast alle Karten aufgedeckt, deine Runde ist vorbei")
+            # for btn in enumerate(self.card_buttons):
+            #     btn.config(state=tk.DISABLED)
