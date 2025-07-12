@@ -176,6 +176,7 @@ class GameGUI:
             time.sleep(5)
             self.hand = data.get("hand", self.hand)
             self.player_id = str(data.get("player_id"))
+            nextPlayer = data.get("startPlayer", 0)
             self.status_label.config(text="Spiel gestartet")
             self.discard_pile = data.get("discard_pile", "?")
             if self.discard_pile:
@@ -185,6 +186,9 @@ class GameGUI:
             self.revealed = [False] * 12
             self.round_over_sent = False
             self.start_count = 0
+            #if nextPlayer == self.player_id:
+            #    self.is_my_turn = True
+            #else:
             self.is_my_turn = False
             self.draw_count = 0
             self.statusGame = True
@@ -239,7 +243,8 @@ class GameGUI:
             self.update_gui()
 
         elif msg_type == "game_over":
-            print("[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen.")
+            print(f"[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen. Spieler: {self.player_id}")
+            self.status_label.config(text="Spiel beendet!")
             if not all(self.revealed):
                 round_score = sum(val for val in self.hand if val != 13)                             # Nicht alle Karten aufgedeckt → alle aufdecken und Punkte berechnen
                 self.score_overall += round_score
@@ -247,13 +252,12 @@ class GameGUI:
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
                         val = self.hand[i] 
-                        btn.config(text=val, image=self.images.get(val, self.images["?"]))
+                        btn.config(text=val, image=self.images.get(val, self.images["?"], state=tk.DISABLED))
                     else:
                         btn.config(image=self.images["?"])
 
             time.sleep(5)
             self.statusGame = False
-            self.status_label.config(text="Spiel beendet!")
             self.root.after(1000, self.root.destroy)
 
     def update_gui(self):
@@ -321,3 +325,5 @@ class GameGUI:
             self.score_overall = self.count_score()
             self.score.config(text=f"Deine Punkte: {self.score_overall}")
             self.status_label.config(text="DU hast alle Karten aufgedeckt, deine Runde ist vorbei")
+            # for btn in enumerate(self.card_buttons):
+            #     btn.config(state=tk.DISABLED)
