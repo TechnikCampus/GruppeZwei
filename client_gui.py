@@ -46,6 +46,7 @@ class GameGUI:
         self.score_overall = 0  # Punkte über Runden hinweg
         self.statusGame = True  # Spiel aktiv
         self.round_over_sent = False  # Wurde "round_over" gesendet?
+        self.points_reached = False
 
         # GUI-Elemente (Buttons etc.)
         self.card_buttons = []  # Spielfeldkarten
@@ -183,12 +184,10 @@ class GameGUI:
                 self.discard_pile_top = self.discard_pile[-1]
             else:
                 self.discard_pile_top = "?"
+            self.check_for_100P()
             self.revealed = [False] * 12
             self.round_over_sent = False
             self.start_count = 0
-            #if nextPlayer == self.player_id:
-            #    self.is_my_turn = True
-            #else:
             self.is_my_turn = False
             self.draw_count = 0
             self.statusGame = True
@@ -260,6 +259,18 @@ class GameGUI:
             self.statusGame = False
             self.root.after(1000, self.root.destroy)
 
+        elif msg_type == "100Pointz":
+            spieler = data.get("player", "?")
+            if spieler ==  self.player_id:
+                self.status_label.config(text=f"DU hast {self.score_overall} und damit ist das Spiel vorbei!")
+            else:
+                self.status_label.config(text=f"Spieler Nr. {spieler} hat mehr als 100 Punkte")
+            time.sleep(5)
+            self.statusGame = False
+            self.root.after(1000, self.root.destroy)
+
+
+
     def update_gui(self):
         # Aktualisiert Karten, Stapel, Buttons, Punkteanzeige
         deck_button, discard_pile_button = self.piles
@@ -267,7 +278,7 @@ class GameGUI:
             val = self.hand[i] if self.revealed[i] else "?"
             btn.config(text=val, image=self.images.get(val, self.images["?"]))
 
-            if self.is_my_turn and self.hand is not None:
+            if self.is_my_turn and self.hand is not None and self.points_reached is False:
                 btn.config(state=tk.NORMAL)
             else:
                 btn.config(state=tk.DISABLED)
@@ -325,5 +336,10 @@ class GameGUI:
             self.score_overall = self.count_score()
             self.score.config(text=f"Deine Punkte: {self.score_overall}")
             self.status_label.config(text="DU hast alle Karten aufgedeckt, deine Runde ist vorbei")
-            # for btn in enumerate(self.card_buttons):
-            #     btn.config(state=tk.DISABLED)
+        
+    def check_for_100P (self):
+        if self.score_overall >= 100:
+            self.network.send("100P", {"player": self.player_id})
+            print("100 Punkte erreicht, spiel vorbei!")
+            self.points_reached =  True
+

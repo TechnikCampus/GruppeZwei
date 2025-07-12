@@ -295,6 +295,21 @@ def client_thread(conn, sid):
                             roundisOver = True
                             endRound()
 
+                    elif typ == "100P":
+                        # Spiel vorbei
+                        spieler = data.get("player", "?")
+                        broadcast({
+                            "type": "100Pointz", 
+                            "player": spieler
+                        })
+                        time.sleep(5)
+                        with spiel_lock:
+                            spielerdaten.clear()
+                        roundisOver = False
+                        turns_left = 0
+                        rounds = 0
+
+
                 except json.JSONDecodeError:
                     print("[SERVER] Ungültige Nachricht erhalten.")
     except:
