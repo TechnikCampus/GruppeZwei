@@ -3,6 +3,7 @@ from tkinter import simpledialog, PhotoImage
 from Server_Client import NetworkClient
 import time
 from PIL import Image, ImageTk
+import os
 
 PORT = 65435  # Standardport für die Verbindung zum Server
 
@@ -245,29 +246,36 @@ class GameGUI:
             print(f"[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen. Spieler: {self.player_id}")
             self.status_label.config(text="Spiel beendet!")
             if not all(self.revealed):
-                round_score = sum(val for val in self.hand if val != 13)                             # Nicht alle Karten aufgedeckt → alle aufdecken und Punkte berechnen
+                round_score = sum(val for val in self.hand if val != 13)
                 self.score_overall += round_score
                 self.score.config(text=f"Deine Punkte: {self.score_overall}")
                 for i, btn in enumerate(self.card_buttons):
                     if self.hand[i] != 13:
                         val = self.hand[i] 
-                        btn.config(text=val, image=self.images.get(val, self.images["?"], state=tk.DISABLED))
+                        btn.config(text=val, image=self.images.get(val, self.images["?"]), state=tk.DISABLED)
                     else:
                         btn.config(image=self.images["?"])
 
-            time.sleep(5)
-            self.statusGame = False
-            self.root.after(1000, self.root.destroy)
+            # Hier die Rangliste anzeigen
+            spieler_punkte = data.get("final_scores", {})
+            self.zeige_rangliste(spieler_punkte)
+            
+            # Fenster nach 30 Sekunden schließen
+            self.root.after(30000, self.root.destroy)
 
         elif msg_type == "100Pointz":
             spieler = data.get("player", "?")
-            if spieler ==  self.player_id:
+            if spieler == self.player_id:
                 self.status_label.config(text=f"DU hast {self.score_overall} und damit ist das Spiel vorbei!")
             else:
                 self.status_label.config(text=f"Spieler Nr. {spieler} hat mehr als 100 Punkte")
-            time.sleep(5)
-            self.statusGame = False
-            self.root.after(1000, self.root.destroy)
+            
+            # Hier die Rangliste anzeigen
+            spieler_punkte = data.get("final_scores", {})
+            self.zeige_rangliste(spieler_punkte)
+            
+            # Fenster nach 30 Sekunden schließen
+            self.root.after(30000, self.root.destroy)
 
 
 
@@ -342,4 +350,75 @@ class GameGUI:
             self.network.send("100P", {"player": self.player_id})
             print("100 Punkte erreicht, spiel vorbei!")
             self.points_reached =  True
+
+    def zeige_rangliste(self, spieler_punkte):
+        if not spieler_punkte:
+            spieler_punkte = {self.player_id: self.score_overall}
+            print("[DEBUG] Keine Punktestände vom Server erhalten, zeige nur eigene Punkte")
+        
+        rangliste_fenster = tk.Toplevel()
+        rangliste_fenster.title("Rangliste")
+        rangliste_fenster.geometry("1024x1024")  # Größe auf 1024x1024 angepasst
+        rangliste_fenster.resizable(False, False)
+        
+        try:
+            # Bild laden und auf 1024x1024 skalieren
+            original_img = Image.open("assets/rangliste.png")
+            resized_img = original_img.resize((1024, 1024), Image.Resampling.LANCZOS)
+            rangliste_img = ImageTk.PhotoImage(resized_img)
+            bg_label = tk.Label(rangliste_fenster, image=rangliste_img)
+            bg_label.image = rangliste_img
+            bg_label.place(relwidth=1, relheight=1)
+            bg_label.lower()
+            print("[DEBUG] Rangliste Hintergrundbild geladen und skaliert")
+        except Exception as e:
+            print(f"[DEBUG] Fehler beim Laden von rangliste.png: {e}")
+            print(f"[DEBUG] Aktuelles Verzeichnis: {os.getcwd()}")
+
+        # Frame für die Rangliste (mittig positioniert)
+        rang_frame = tk.Frame(rangliste_fenster, bg='white', bd=2, relief='solid')
+        rang_frame.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
+
+        # Rangliste sortieren und anzeigen
+        rangliste = sorted(spieler_punkte.items(), key=lambda x: x[1], reverse=True)
+        
+        # Überschrift
+        tk.Label(rang_frame, 
+                text="🏆 Finale Rangliste 🏆",
+                font=("Arial", 16, "bold"),
+                bg='white').pack(pady=10)
+
+        # Spieler auflisten
+        for i, (spieler, punkte) in enumerate(rangliste):
+            platz = i + 1
+            text = f"{platz}. Platz: {spieler} - {punkte} Punkte"
+            
+            # Formatierung für die ersten drei Plätze
+            if platz == 1:
+                text = "🥇 " + text
+                farbe = "gold"
+            elif platz == 2:
+                text = "🥈 " + text
+                farbe = "gray"
+            elif platz == 3:
+                text = "🥉 " + text
+                farbe = "#CD7F32"
+            else:
+                farbe = "black"
+                
+            tk.Label(rang_frame, 
+                    text=text,
+                    font=("Arial", 12),
+                    bg='white',
+                    fg=farbe).pack(pady=5)
+
+        # Schließen Button
+        tk.Button(rang_frame,
+                  text="Schließen",
+                  command=rangliste_fenster.destroy).pack(pady=20)
+        
+        # Fenster nach 30 Sekunden schließen
+        rangliste_fenster.after(30000, rangliste_fenster.destroy)
+
+        print("[DEBUG] Rangliste wurde erstellt")
 

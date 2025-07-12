@@ -75,6 +75,69 @@ def start_client():
         gui_root.mainloop()
 
 
+# ==== Rangliste anzeigen ====
+def zeige_rangliste(spieler_punkte):
+    """
+    Zeigt die Rangliste der Spieler nach Spielende an.
+    
+    Args:
+        spieler_punkte: Dictionary mit Spielernamen als Keys und Punkten als Values
+    """
+    rangliste_fenster = tk.Toplevel()
+    rangliste_fenster.title("Rangliste")
+    rangliste_fenster.geometry("700x400")
+    rangliste_fenster.resizable(False, False)
+
+    try:
+        # Rangliste-Hintergrundbild laden
+        rangliste_img = ImageTk.PhotoImage(Image.open("assets/rangliste.png"))
+        bg_label = tk.Label(rangliste_fenster, image=rangliste_img)
+        bg_label.image = rangliste_img  # Referenz behalten
+        bg_label.place(relwidth=1, relheight=1)
+    except Exception as e:
+        print(f"[WARN] rangliste.png konnte nicht geladen werden: {e}")
+        
+    # Frame für die Rangliste
+    rang_frame = tk.Frame(rangliste_fenster, bg='white', bd=2, relief='solid')
+    rang_frame.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
+    
+    # Überschrift
+    tk.Label(rang_frame, 
+            text="🏆 Rangliste 🏆",
+            font=("Arial", 16, "bold"),
+            bg='white').pack(pady=10)
+    
+    # Spieler nach Punkten sortieren (aufsteigend)
+    sortierte_spieler = sorted(spieler_punkte.items(), key=lambda x: x[1])
+    
+    # Rangliste erstellen
+    for position, (spieler, punkte) in enumerate(sortierte_spieler, 1):
+        platz_text = f"{position}. Platz: {spieler} - {punkte} Punkte"
+        label_style = {"font": ("Arial", 12),
+                      "bg": 'white',
+                      "padx": 10,
+                      "pady": 5}
+        
+        if position == 1:
+            label_style["fg"] = "gold"
+            platz_text = "🥇 " + platz_text
+        elif position == 2:
+            label_style["fg"] = "silver"
+            platz_text = "🥈 " + platz_text
+        elif position == 3:
+            label_style["fg"] = "#CD7F32"  # Bronze
+            platz_text = "🥉 " + platz_text
+            
+        tk.Label(rang_frame, text=platz_text, **label_style).pack()
+    
+    # Schließen-Button
+    tk.Button(rang_frame,
+              text="Schließen",
+              command=rangliste_fenster.destroy).pack(pady=10)
+
+    rangliste_fenster.mainloop()
+
+
 # ==== Hauptfenster: Auswahl Host oder Client ====
 if __name__ == "__main__":
     root = tk.Tk()
