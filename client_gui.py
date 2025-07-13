@@ -243,39 +243,25 @@ class GameGUI:
             self.update_gui()
 
         elif msg_type == "game_over":
-            print(f"[DEBUG] game_over empfangen, Fenster wird in 6 Sekunden geschlossen. Spieler: {self.player_id}")
-            self.status_label.config(text="Spiel beendet!")
+            # Berechne die finale Punktzahl
             if not all(self.revealed):
                 round_score = sum(val for val in self.hand if val != 13)
                 self.score_overall += round_score
-                self.score.config(text=f"Deine Punkte: {self.score_overall}")
-                for i, btn in enumerate(self.card_buttons):
-                    if self.hand[i] != 13:
-                        val = self.hand[i] 
-                        btn.config(text=val, image=self.images.get(val, self.images["?"]), state=tk.DISABLED)
-                    else:
-                        btn.config(image=self.images["?"])
-
-            # Hier die Rangliste anzeigen
-            spieler_punkte = data.get("final_scores", {})
-            self.zeige_rangliste(spieler_punkte)
             
-            # Fenster nach 30 Sekunden schließen
-            self.root.after(30000, self.root.destroy)
+            # Punktzahlen vom Server abrufen
+            final_scores = data.get("final_scores", {})
+            print(f"[DEBUG] Empfangene Punktzahlen: {final_scores}")
+            
+            # Rangliste anzeigen und auf Schließen warten
+            self.zeige_rangliste(final_scores)
+            self.root.after(5000, self.close_connection)
 
         elif msg_type == "100Pointz":
-            spieler = data.get("player", "?")
-            if spieler == self.player_id:
-                self.status_label.config(text=f"DU hast {self.score_overall} und damit ist das Spiel vorbei!")
-            else:
-                self.status_label.config(text=f"Spieler Nr. {spieler} hat mehr als 100 Punkte")
-            
-            # Hier die Rangliste anzeigen
-            spieler_punkte = data.get("final_scores", {})
-            self.zeige_rangliste(spieler_punkte)
-            
-            # Fenster nach 30 Sekunden schließen
-            self.root.after(30000, self.root.destroy)
+            print("Spiel wegen 100 Punkten beendet!")
+            self.status_label.config(text=f"Spiel beendet - {data.get('player', '?')} hat über 100 Punkte!")
+            # Zeige Rangliste mit finalen Punkteständen
+            self.zeige_rangliste(data.get("final_scores", {}))
+            self.root.after(30000, self.root.destroy)  # Schließe nach 30 Sekunden
 
 
 
@@ -375,42 +361,41 @@ class GameGUI:
             print(f"[DEBUG] Fehler beim Laden von rangliste.png: {e}")
             print(f"[DEBUG] Aktuelles Verzeichnis: {os.getcwd()}")
 
-        # Frame für die Rangliste (mittig positioniert)
+        # Frame für die Rangliste
         rang_frame = tk.Frame(rangliste_fenster, bg='white', bd=2, relief='solid')
-        rang_frame.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
+        rang_frame.place(relx=0.5, rely=0.35, anchor=tk.CENTER)
 
-        # Rangliste sortieren und anzeigen
-        rangliste = sorted(spieler_punkte.items(), key=lambda x: x[1], reverse=True)
-        
         # Überschrift
         tk.Label(rang_frame, 
                 text="🏆 Finale Rangliste 🏆",
-                font=("Arial", 16, "bold"),
-                bg='white').pack(pady=10)
+                font=("Arial", 24, "bold"),
+                bg='white').pack(pady=15)
 
-        # Spieler auflisten
-        for i, (spieler, punkte) in enumerate(rangliste):
-            platz = i + 1
-            text = f"{platz}. Platz: {spieler} - {punkte} Punkte"
+        # Die Scores sind bereits sortiert vom Server
+        for position, (spieler, punkte) in enumerate(spieler_punkte.items(), 1):
+            # Extrahiere den Namen
+            name = spieler.split(" als ")[1].rstrip('.') if " als " in spieler else spieler
             
-            # Formatierung für die ersten drei Plätze
-            if platz == 1:
-                text = "🥇 " + text
-                farbe = "gold"
-            elif platz == 2:
-                text = "🥈 " + text
-                farbe = "gray"
-            elif platz == 3:
-                text = "🥉 " + text
-                farbe = "#CD7F32"
+            # Formatierung basierend auf Position
+            if position == 1:
+                emoji, farbe = "🥇", "gold"
+            elif position == 2:
+                emoji, farbe = "🥈", "silver"
+            elif position == 3:
+                emoji, farbe = "🥉", "#CD7F32"
             else:
-                farbe = "black"
-                
+                emoji, farbe = "👤", "black"
+
+            # Text mit Platzierung, Name und Punkten
+            text = f"{emoji} {position}. Platz: {name}\nPunkte: {punkte}"
+            
+            # Label für Spielereintrag
             tk.Label(rang_frame, 
                     text=text,
-                    font=("Arial", 12),
+                    font=("Arial", 14, "bold" if spieler == self.player_id else "normal"),
                     bg='white',
-                    fg=farbe).pack(pady=5)
+                    fg=farbe,
+                    justify=tk.LEFT).pack(pady=5, padx=15)
 
         # Schließen Button
         tk.Button(rang_frame,
@@ -421,4 +406,40 @@ class GameGUI:
         rangliste_fenster.after(30000, rangliste_fenster.destroy)
 
         print("[DEBUG] Rangliste wurde erstellt")
+
+    def close_connection(self):
+        """Clean up network connection before closing"""
+        try:
+            if hasattr(self, 'network') and self.network:
+                if hasattr(self.network, 'socket') and self.network.socket:
+                    self.network.socket.close()
+                    print("[DEBUG] Network connection closed")
+        except Exception as e:
+            print(f"[ERROR] Error closing connection: {e}")
+        finally:
+            if hasattr(self, 'root') and self.root:
+                self.root.destroy()
+                print("[DEBUG] GUI closed")
+
+    def calculate_final_score(self):
+        """Calculate final score from revealed cards"""
+        total_score = 0
+        for i in range(len(self.grid)):
+            for j in range(len(self.grid[i])):
+                if self.grid[i][j] is not None:  # Card is revealed
+                    total_score += self.grid[i][j]
+        print(f"[DEBUG] Calculated score for {self.player_id}: {total_score}")
+        return total_score
+
+    def handle_game_over(self):
+        """Handle game over event"""
+        final_score = self.calculate_final_score()
+        print(f"[DEBUG] Submitting final score: {final_score}")
+        
+        # Send score to server
+        self.network.send("submit_score", {
+            "player_id": self.player_id,
+            "name": self.player_name,
+            "score": final_score
+        })
 

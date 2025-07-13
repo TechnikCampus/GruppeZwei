@@ -61,6 +61,7 @@ class Player:
             "grid": self.grid,
             "revealed": self.revealed,
             "score": self.score,
+            "score_overall": self.score_overall,  # Gesamtpunktzahl hinzugefügt
             "avatar": self.avatar,
             "is_ready": self.is_ready,
             "is_connected": self.is_connected,

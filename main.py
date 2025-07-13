@@ -81,22 +81,77 @@ def zeige_rangliste(spieler_punkte):
     Zeigt die Rangliste der Spieler nach Spielende an.
     
     Args:
-        spieler_punkte: Dictionary mit Spielernamen als Keys und Punkten als Values
+        spieler_punkte: Dictionary mit Spielernamen und finalen Punkten
     """
+    print(f"[DEBUG] ====== RANKING CREATION START ======")
+    print(f"[DEBUG] Received scores: {spieler_punkte}")
+    
+    # Bubble Sort für die Sortierung nach Punkten
+    def bubble_sort_scores(scores):
+        """Sort players by score in ascending order"""
+        items = list(scores.items())
+        n = len(items)
+        print(f"[DEBUG] Starting sort with scores: {items}")
+        
+        for i in range(n):
+            for j in range(0, n-i-1):
+                # Convert scores to integers with error handling
+                try:
+                    score1 = int(items[j][1])
+                    score2 = int(items[j+1][1])
+                except (TypeError, ValueError) as e:
+                    print(f"[DEBUG] Score conversion error: {e}")
+                    continue
+                    
+                print(f"[DEBUG] Comparing {items[j][0]} ({score1}) with {items[j+1][0]} ({score2})")
+                if score1 > score2:
+                    items[j], items[j+1] = items[j+1], items[j]
+                    print(f"[DEBUG] Swapped positions")
+        
+        print(f"[DEBUG] Final sorted order: {items}")
+        return items
+    
+    sortierte_spieler = bubble_sort_scores(spieler_punkte)
+    print(f"[DEBUG] Sorted players: {sortierte_spieler}")
+    
+    # GUI Setup
     rangliste_fenster = tk.Toplevel()
     rangliste_fenster.title("Rangliste")
     rangliste_fenster.geometry("700x400")
     rangliste_fenster.resizable(False, False)
+    rangliste_fenster.focus_force()  # Force focus on ranking window
+    rangliste_fenster.grab_set()     # Make window modal
 
+    # Timer Label hinzufügen
+    timer_label = tk.Label(rangliste_fenster, text="Fenster schließt in 30 Sekunden...", 
+                          font=("Arial", 10), bg="white")
+    timer_label.place(relx=0.5, rely=0.9, anchor=tk.CENTER)
+
+    # Countdown Funktion
+    def countdown(remaining):
+        if remaining > 0:
+            timer_label.config(text=f"Fenster schließt in {remaining} Sekunden...")
+            rangliste_fenster.after(1000, countdown, remaining - 1)
+        else:
+            print("[DEBUG] Closing ranking window after 30 seconds")
+            rangliste_fenster.quit()
+            rangliste_fenster.destroy()
+
+    # Start 30 second countdown
+    rangliste_fenster.after(1000, countdown, 30)
+    
     try:
-        # Rangliste-Hintergrundbild laden
-        rangliste_img = ImageTk.PhotoImage(Image.open("assets/rangliste.png"))
+        # Rangliste-Hintergrundbild laden und skalieren
+        img = Image.open("assets/rangliste.png")
+        img = img.resize((700, 400), Image.LANCZOS)  # Resize to window size
+        rangliste_img = ImageTk.PhotoImage(img)
         bg_label = tk.Label(rangliste_fenster, image=rangliste_img)
-        bg_label.image = rangliste_img  # Referenz behalten
+        bg_label.image = rangliste_img  # Keep reference
         bg_label.place(relwidth=1, relheight=1)
+        print("[DEBUG] Ranking background image loaded and scaled")
     except Exception as e:
-        print(f"[WARN] rangliste.png konnte nicht geladen werden: {e}")
-        
+        print(f"[WARN] Could not load rangliste.png: {e}")
+
     # Frame für die Rangliste
     rang_frame = tk.Frame(rangliste_fenster, bg='white', bd=2, relief='solid')
     rang_frame.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
@@ -107,12 +162,13 @@ def zeige_rangliste(spieler_punkte):
             font=("Arial", 16, "bold"),
             bg='white').pack(pady=10)
     
-    # Spieler nach Punkten sortieren (aufsteigend)
-    sortierte_spieler = sorted(spieler_punkte.items(), key=lambda x: x[1])
-    
-    # Rangliste erstellen
+    # Rangliste erstellen mit sortierten Spielern
     for position, (spieler, punkte) in enumerate(sortierte_spieler, 1):
-        platz_text = f"{position}. Platz: {spieler} - {punkte} Punkte"
+        name = spieler.split(" als ")[1].rstrip('.')
+        platz_text = f"{position}. Platz: {name}"  # Only show name
+        
+        print(f"[DEBUG] Adding player to ranking: {name} with {punkte} points")
+        
         label_style = {"font": ("Arial", 12),
                       "bg": 'white',
                       "padx": 10,
@@ -125,7 +181,7 @@ def zeige_rangliste(spieler_punkte):
             label_style["fg"] = "silver"
             platz_text = "🥈 " + platz_text
         elif position == 3:
-            label_style["fg"] = "#CD7F32"  # Bronze
+            label_style["fg"] = "#CD7F32"
             platz_text = "🥉 " + platz_text
             
         tk.Label(rang_frame, text=platz_text, **label_style).pack()
@@ -135,6 +191,7 @@ def zeige_rangliste(spieler_punkte):
               text="Schließen",
               command=rangliste_fenster.destroy).pack(pady=10)
 
+    # Keep window open
     rangliste_fenster.mainloop()
 
 

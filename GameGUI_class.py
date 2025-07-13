@@ -1,4 +1,6 @@
-
+import tkinter as tk
+from networkClientClass import NetworkClient  # Import der Netzwerk-Client-Klasse
+from KeyboardInputHandler_class import KeyboardInputHandler  # Import der Tastatur-Eingabeverwaltung
 # ==== Haupt-GUI für den Client ====
 class GameGUI:
     def __init__(self, root, server_ip="127.0.0.1", server_port=5000):

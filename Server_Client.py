@@ -347,51 +347,79 @@ def server_starten(konfig):
         sid += 1
 
 def endRound():
-    global roundisOver, turns_left, rounds, finishingPlayer, spielerdaten, SkyjoSpiel, letzte_aktion
-
-    if roundisOver and (len(spielerdaten) == 1 or SkyjoSpiel.get_current_player().id != finishingPlayer):
-        turns_left -= 1
-        if turns_left <= 0:
-            print("[SERVER] no more rounds left")
-            if rounds <= 0:
-                # Spiel vorbei
-                broadcast({"type": "game_over"})
-                time.sleep(5)
-                with spiel_lock:
-                    spielerdaten.clear()
-                roundisOver = False
-                turns_left = 0
-                rounds = 0
-            else:
-                # Nächste Runde vorbereiten
-                turns_left = config["anzahl_spieler"]
-                rounds -= 1
-                print(f"[SERVER] Runde {config['anzahl_runden'] - rounds} beendet. Nächste Runde beginnt.")
-                SkyjoSpiel.reset_game()
-                SkyjoSpiel.initialize_deck()
-                SkyjoSpiel.players.clear()
-                for sid in spielerdaten:
-                    spieler = Player(str(sid))
-                    spielerdaten[sid]["spieler"] = spieler
-                    SkyjoSpiel.add_player(spieler)
-                SkyjoSpiel.deal_initial_cards()
-                nextPlayer = SkyjoSpiel.get_current_player().id
-                for sid in spielerdaten:
-                    hand = spielerdaten[sid]["spieler"].hand
-                    spielerdaten[sid]["conn"].sendall(json.dumps({
-                        "type": "new_round",
-                        "player_id": sid,
-                        "hand": hand,
-                        "discard_pile": SkyjoSpiel.discard_pile,
-                    }).encode("utf-8") + b"\n")
-                roundisOver = False
-                finishingPlayer = 9
-                next_id = SkyjoSpiel.get_current_player().id
-                for k in letzte_aktion:
-                    letzte_aktion[k] = True
-                letzte_aktion[str(next_id)] = False
+    global roundisOver, turns_left, rounds
+    if turns_left <= 0:
+        if rounds <= 0:
+            try:
+                # Calculate final scores
+                final_scores = {}
+                for sid, data in spielerdaten.items():
+                    player_name = f"Spieler {sid} als {data['name']}"
+                    player = data["spieler"]
+                    
+                    # Sum up all card values in the grid
+                    score = 0
+                    for i in range(len(player.grid)):
+                        for j in range(len(player.grid[i])):
+                            value = player.grid[i][j]
+                            if value is not None:  # Only count revealed cards
+                                score += value
+                    
+                    final_scores[player_name] = score
+                    print(f"[DEBUG] Final score for {player_name}: {score}")
+                
+                print(f"[DEBUG] Final scores before sorting: {final_scores}")
+                
+                # Send scores to clients
                 broadcast({
-                    "type": "turn",
-                    "player": str(next_id),
-                    "name": spielerdaten[int(next_id)]["name"]
+                    "type": "game_over",
+                    "final_scores": final_scores
                 })
+                
+            except Exception as e:
+                print(f"[ERROR] Error during game end: {e}")
+
+def bubble_sort_scores(scores_dict):
+    """
+    Sortiert die Spieler nach Punktzahl (aufsteigend)
+    
+    Args:
+        scores_dict: Dictionary mit Spielernamen und Punkten
+    Returns:
+        Liste von Tupeln (name, score), aufsteigend sortiert
+    """
+    items = list(scores_dict.items())
+    n = len(items)
+    
+    for i in range(n):
+        for j in range(0, n - i - 1):
+            if items[j][1] > items[j + 1][1]:
+                items[j], items[j + 1] = items[j + 1], items[j]
+    
+    return items
+
+class SkyjoGame:
+    def __init__(self):
+        self.final_scores = {}  # Neue Variable für finale Punktestände
+    
+    def handle_submit_score(self, player_id, data):
+        """Handle submitted score from client"""
+        score = data.get("score", 0)
+        name = data.get("name", f"Player {player_id}")
+        player_key = f"Spieler {player_id} als {name}"
+        
+        print(f"[DEBUG] Received score from {player_key}: {score}")
+        self.final_scores[player_key] = score
+        
+        # Check if all scores are in
+        if len(self.final_scores) == len(self.spielerdaten):
+            print(f"[DEBUG] All scores received: {self.final_scores}")
+            self.broadcast_final_scores()
+
+    def broadcast_final_scores(self):
+        """Send final scores to all clients"""
+        print(f"[DEBUG] Broadcasting final scores: {self.final_scores}")
+        self.broadcast({
+            "type": "game_over",
+            "final_scores": self.final_scores
+        })
